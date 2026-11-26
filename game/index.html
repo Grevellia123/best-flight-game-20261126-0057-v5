@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>TALON STRIKE — 3D Air Combat</title>
+<style>
+  :root {
+    --hud: #aee6ff;
+    --hud-dim: rgba(160, 210, 235, 0.75);
+    --gold: #ffb020;
+    --red: #ff5040;
+    --panel: rgba(8, 18, 26, 0.62);
+    --panel-line: rgba(140, 220, 255, 0.35);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; overflow: hidden; background: #0a141c; }
+  body {
+    font-family: ui-monospace, 'SF Mono', 'Cascadia Mono', Menlo, Consolas, monospace;
+    color: var(--hud);
+    user-select: none; -webkit-user-select: none;
+  }
+  #game { position: fixed; inset: 0; touch-action: none; }
+  #game canvas { display: block; }
+
+  /* ---------- HUD ---------- */
+  #hud { position: fixed; inset: 0; pointer-events: none; display: none; z-index: 5; }
+  .panel { background: var(--panel); border: 1px solid var(--panel-line); border-radius: 6px; }
+  #wave-info {
+    position: absolute; top: calc(10px + env(safe-area-inset-top, 0px)); left: calc(12px + env(safe-area-inset-left, 0px));
+    padding: 8px 12px; font-size: 14px; font-weight: 700; letter-spacing: 0.06em;
+  }
+  #wave-info .gold { color: var(--gold); }
+  #wave-sub {
+    position: absolute; top: calc(52px + env(safe-area-inset-top, 0px)); left: calc(12px + env(safe-area-inset-left, 0px));
+    padding: 5px 10px; font-size: 11px; letter-spacing: 0.05em; color: var(--hud-dim);
+  }
+  #killfeed {
+    position: absolute; top: calc(88px + env(safe-area-inset-top, 0px)); left: calc(12px + env(safe-area-inset-left, 0px));
+    font-size: 11px; letter-spacing: 0.04em;
+  }
+  .feed-line { padding: 3px 8px; margin-bottom: 3px; background: rgba(8, 18, 26, 0.6); border-left: 2px solid var(--gold); animation: feedin 0.2s ease-out; }
+  @keyframes feedin { from { opacity: 0; transform: translateX(-8px); } to { opacity: 1; } }
+  #compass { position: absolute; top: calc(8px + env(safe-area-inset-top, 0px)); left: 50%; transform: translateX(-50%); width: 320px; height: 56px; }
+  #msg {
+    position: absolute; top: calc(74px + env(safe-area-inset-top, 0px)); left: 50%; transform: translateX(-50%);
+    padding: 7px 18px; font-size: 13px; font-weight: 700; letter-spacing: 0.08em; color: #ffe9b0;
+    background: rgba(8, 18, 26, 0.72); border: 1px solid rgba(255, 176, 32, 0.5); border-radius: 4px;
+    transition: opacity 0.4s; white-space: nowrap; max-width: 92vw; overflow: hidden; text-overflow: ellipsis;
+  }
+  #ias-tape { position: absolute; left: calc(10px + env(safe-area-inset-left, 0px)); top: 50%; transform: translateY(-50%); width: 62px; height: 230px; }
+  #alt-tape { position: absolute; right: calc(10px + env(safe-area-inset-right, 0px)); top: 50%; transform: translateY(-50%); width: 62px; height: 230px; }
+  #bars {
+    position: absolute; left: calc(12px + env(safe-area-inset-left, 0px)); bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+    width: 250px; padding: 10px 12px; font-size: 11px;
+  }
+  .bar-row { display: flex; align-items: center; gap: 8px; margin: 4px 0; }
+  .bar-row label { width: 86px; letter-spacing: 0.05em; color: var(--hud-dim); }
+  .bar { flex: 1; height: 9px; background: rgba(255,255,255,0.12); border-radius: 3px; overflow: hidden; }
+  .bar > div { height: 100%; border-radius: 3px; transition: width 0.15s linear; }
+  #fuel-bar { width: 100%; background: #37b6e8; }
+  #fuel-bar.low { background: var(--red); }
+  #hull-bar { width: 100%; background: #58d68a; }
+  #hull-bar.low { background: var(--red); }
+  #heat-bar { width: 0%; background: var(--gold); }
+  #heat-bar.hot { background: var(--red); }
+  .bar-row .val { width: 74px; text-align: right; }
+  #msl-text.empty { color: var(--red); }
+  #radar { position: absolute; right: calc(12px + env(safe-area-inset-right, 0px)); bottom: calc(12px + env(safe-area-inset-bottom, 0px)); width: 148px; height: 148px; }
+  #overlay { position: absolute; inset: 0; width: 100%; height: 100%; }
+  #stall-warn {
+    position: absolute; left: 50%; top: 58%; transform: translateX(-50%);
+    color: var(--red); font-weight: 700; font-size: 16px; letter-spacing: 0.2em;
+    text-shadow: 0 0 12px rgba(255, 80, 64, 0.8); transition: opacity 0.2s; opacity: 0;
+  }
+  #lock-text {
+    position: absolute; left: 50%; top: calc(50% + 34px); transform: translateX(-50%);
+    font-size: 13px; font-weight: 700; letter-spacing: 0.12em; color: #ffc020;
+    text-shadow: 0 1px 6px rgba(0,0,0,0.8);
+  }
+  .hud-btn {
+    pointer-events: auto; cursor: pointer;
+    background: var(--panel); border: 1px solid var(--panel-line); color: var(--hud);
+    font: 700 12px ui-monospace, monospace; letter-spacing: 0.06em;
+    min-width: 44px; min-height: 44px; padding: 6px 12px; border-radius: 6px;
+  }
+  .hud-btn:active { background: rgba(140, 220, 255, 0.25); }
+  #top-btns { position: absolute; top: calc(10px + env(safe-area-inset-top, 0px)); right: calc(12px + env(safe-area-inset-right, 0px)); display: flex; gap: 8px; }
+
+  /* Cockpit frame (cockpit camera only). */
+  #cockpit-frame { display: none; position: fixed; inset: 0; pointer-events: none; z-index: 4; }
+  #cockpit-frame::before {
+    content: ''; position: absolute; inset: 0;
+    background:
+      linear-gradient(to bottom, rgba(6,12,18,0.92) 0%, rgba(6,12,18,0.55) 9%, transparent 16%),
+      linear-gradient(to top, rgba(6,12,18,0.95) 0%, rgba(6,12,18,0.6) 12%, transparent 22%),
+      linear-gradient(to right, rgba(6,12,18,0.9) 0%, transparent 7%),
+      linear-gradient(to left, rgba(6,12,18,0.9) 0%, transparent 7%);
+  }
+  #cockpit-frame .strut { position: absolute; background: rgba(10, 18, 26, 0.95); }
+  #cockpit-frame .strut.l { left: 30%; top: 0; bottom: 0; width: 10px; transform: skewX(14deg); }
+  #cockpit-frame .strut.r { right: 30%; top: 0; bottom: 0; width: 10px; transform: skewX(-14deg); }
+  #cockpit-frame .dash {
+    position: absolute; left: 0; right: 0; bottom: 0; height: 15%;
+    background: linear-gradient(to top, #0a1218 55%, #131e26 100%);
+    border-top: 2px solid #26333d;
+  }
+  #cockpit-frame .dash::after {
+    content: 'T-7 TALON · TALON-1'; position: absolute; left: 50%; top: 38%; transform: translateX(-50%);
+    font-size: 11px; letter-spacing: 0.3em; color: rgba(174, 230, 255, 0.5);
+  }
+
+  /* ---------- Touch controls ---------- */
+  #touch-controls { display: none; position: fixed; inset: 0; pointer-events: none; z-index: 6; }
+  body.touch #touch-controls { display: block; }
+  .touch-btn {
+    pointer-events: auto; position: absolute;
+    display: flex; align-items: center; justify-content: center;
+    min-width: 64px; min-height: 64px; border-radius: 50%;
+    background: rgba(8, 18, 26, 0.55); border: 2px solid rgba(140, 220, 255, 0.5);
+    color: var(--hud); font: 700 13px ui-monospace, monospace; letter-spacing: 0.04em;
+  }
+  .touch-btn:active { background: rgba(140, 220, 255, 0.35); }
+  #btn-fire { right: calc(18px + env(safe-area-inset-right, 0px)); bottom: calc(180px + env(safe-area-inset-bottom, 0px)); width: 84px; height: 84px; border-color: var(--red); color: #ffb0a0; }
+  #btn-msl { right: calc(116px + env(safe-area-inset-right, 0px)); bottom: calc(196px + env(safe-area-inset-bottom, 0px)); width: 64px; height: 64px; border-color: var(--gold); color: #ffe1a0; }
+  #btn-thr-up { left: calc(18px + env(safe-area-inset-left, 0px)); bottom: calc(196px + env(safe-area-inset-bottom, 0px)); }
+  #btn-thr-dn { left: calc(18px + env(safe-area-inset-left, 0px)); bottom: calc(116px + env(safe-area-inset-bottom, 0px)); }
+  .touch-hint {
+    position: absolute; left: 50%; bottom: calc(8px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%);
+    font-size: 10px; letter-spacing: 0.08em; color: var(--hud-dim); white-space: nowrap;
+  }
+
+  /* ---------- Screens ---------- */
+  .screen {
+    position: fixed; inset: 0; z-index: 10; display: none;
+    flex-direction: column; align-items: center; justify-content: center;
+    text-align: center; padding: 24px; gap: 14px;
+    background: radial-gradient(ellipse at 50% 30%, rgba(10, 26, 40, 0.55) 0%, rgba(5, 10, 16, 0.82) 100%);
+  }
+  .kicker { font-size: 12px; letter-spacing: 0.42em; color: var(--gold); font-weight: 700; }
+  h1.title { font-size: clamp(44px, 9vw, 92px); line-height: 0.95; letter-spacing: 0.04em; color: #eaf7ff; text-shadow: 0 0 32px rgba(127, 212, 255, 0.45); }
+  h1.title .strike { color: var(--gold); }
+  .subtitle { font-size: 13px; letter-spacing: 0.18em; color: var(--hud-dim); }
+  .wave-list { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; max-width: 640px; }
+  .wave-chip { padding: 6px 10px; font-size: 11px; letter-spacing: 0.06em; background: var(--panel); border: 1px solid var(--panel-line); border-radius: 4px; }
+  .wave-chip b { color: var(--gold); }
+  .big-btn {
+    pointer-events: auto; cursor: pointer; margin-top: 6px;
+    font: 700 18px ui-monospace, monospace; letter-spacing: 0.14em; color: #101c24;
+    background: linear-gradient(180deg, #ffc84d, #ff9d1e); border: none; border-radius: 8px;
+    padding: 16px 44px; min-height: 56px; box-shadow: 0 6px 24px rgba(255, 157, 30, 0.35);
+  }
+  .big-btn:active { transform: translateY(1px); }
+  .ghost-btn {
+    pointer-events: auto; cursor: pointer; font: 700 13px ui-monospace, monospace; letter-spacing: 0.1em;
+    color: var(--hud); background: transparent; border: 1px solid var(--panel-line); border-radius: 6px;
+    padding: 10px 22px; min-height: 44px;
+  }
+  .controls { font-size: 11px; line-height: 1.9; color: var(--hud-dim); letter-spacing: 0.04em; max-width: 560px; }
+  .controls b { color: var(--hud); }
+  .settings-row { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+  .set-btn {
+    pointer-events: auto; cursor: pointer; font: 700 11px ui-monospace, monospace; letter-spacing: 0.08em;
+    color: var(--hud); background: var(--panel); border: 1px solid var(--panel-line); border-radius: 6px;
+    padding: 10px 14px; min-height: 44px;
+  }
+  .end-title { font-size: clamp(34px, 7vw, 64px); letter-spacing: 0.06em; font-weight: 700; }
+  .end-title.win { color: #7be495; text-shadow: 0 0 28px rgba(123, 228, 149, 0.5); }
+  .end-title.lose { color: var(--red); text-shadow: 0 0 28px rgba(255, 80, 64, 0.5); }
+  .debrief { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 28px; max-width: 460px; width: 100%; text-align: left; }
+  .stat { display: flex; justify-content: space-between; padding: 8px 12px; background: var(--panel); border: 1px solid var(--panel-line); border-radius: 4px; font-size: 12px; }
+  .stat span { color: var(--hud-dim); letter-spacing: 0.06em; }
+  .stat b { color: #ffe9b0; }
+  .btn-row { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
+  #webgl-error { display: none; position: fixed; inset: 0; z-index: 50; align-items: center; justify-content: center; padding: 24px; background: #0a141c; color: #ffb0a0; font-size: 14px; text-align: center; }
+  @media (max-width: 640px) {
+    #compass { width: 210px; height: 48px; }
+    #wave-info { font-size: 12px; }
+    #bars { width: 200px; }
+    #radar { width: 104px; height: 104px; }
+    #ias-tape, #alt-tape { height: 170px; width: 52px; }
+    .debrief { grid-template-columns: 1fr; }
+  }
+</style>
+<script type="importmap">
+{ "imports": { "three": "./vendor/three.module.min.js" } }
+</script>
+</head>
+<body>
+<div id="game"></div>
+<div id="cockpit-frame"><div class="strut l"></div><div class="strut r"></div><div class="dash"></div></div>
+
+<div id="hud">
+  <canvas id="overlay"></canvas>
+  <div id="wave-info" class="panel">WAVE 1 / 5 · KILLS 0 · <span class="gold">0 CR</span></div>
+  <div id="wave-sub" class="panel"></div>
+  <div id="killfeed"></div>
+  <canvas id="compass"></canvas>
+  <div id="msg" class="panel"></div>
+  <canvas id="ias-tape"></canvas>
+  <canvas id="alt-tape"></canvas>
+  <div id="bars" class="panel">
+    <div class="bar-row"><label id="fuel-text">FUEL 100%</label><div class="bar"><div id="fuel-bar"></div></div></div>
+    <div class="bar-row"><label id="hull-text">HULL 100%</label><div class="bar"><div id="hull-bar"></div></div></div>
+    <div class="bar-row"><label id="heat-text">GUN HEAT 0%</label><div class="bar"><div id="heat-bar"></div></div></div>
+    <div class="bar-row"><label id="msl-text">MSL 6 ×</label><div class="bar"><div style="width:100%;background:rgba(255,176,32,0.55)"></div></div></div>
+  </div>
+  <canvas id="radar"></canvas>
+  <div id="stall-warn">⚠ STALL — THROTTLE UP</div>
+  <div id="lock-text"></div>
+  <div id="top-btns">
+    <button class="hud-btn" id="btn-cam">COCKPIT</button>
+    <button class="hud-btn" id="btn-mute">🔊</button>
+    <button class="hud-btn" id="btn-pause">⏸</button>
+  </div>
+</div>
+
+<div id="touch-controls">
+  <div class="touch-btn" id="btn-thr-up">THR ▲</div>
+  <div class="touch-btn" id="btn-thr-dn">THR ▼</div>
+  <div class="touch-btn" id="btn-msl">MSL</div>
+  <div class="touch-btn" id="btn-fire">FIRE</div>
+  <div class="touch-hint">DRAG TO STEER · FIRE = GUNS · MSL = MISSILE (NEEDS LOCK)</div>
+</div>
+
+<div class="screen" id="title-screen">
+  <div class="kicker">TALON SQUADRON · NORTHERN COAST DEFENCE</div>
+  <h1 class="title">TALON<br><span class="strike">STRIKE</span></h1>
+  <div class="subtitle">T-7 TALON INTERCEPTOR · 5 WAVES · THE CRIMSON WING IS INBOUND</div>
+  <div class="wave-list">
+    <div class="wave-chip"><b>1</b> FIRST CONTACT</div>
+    <div class="wave-chip"><b>2</b> RIVER AMBUSH</div>
+    <div class="wave-chip"><b>3</b> STORM FRONT</div>
+    <div class="wave-chip"><b>4</b> CRIMSON TIDE</div>
+    <div class="wave-chip"><b>5</b> ACE HUNT</div>
+  </div>
+  <button class="big-btn" id="btn-fly">▶ &nbsp;FLY THE SORTIE</button>
+  <div class="controls">
+    <b>STEER</b> drag / arrows / WASD &nbsp;·&nbsp; <b>THROTTLE</b> wheel / Shift / Ctrl &nbsp;·&nbsp; <b>GUNS</b> Space<br>
+    <b>MISSILE</b> F — hold the bandit in the reticle to lock &nbsp;·&nbsp; <b>CAMERA</b> C &nbsp;·&nbsp; <b>PAUSE</b> P<br>
+    Fly through gold rings for +50 CR · Watch fuel and hull · Clear all 5 waves to win
+  </div>
+  <div class="settings-row">
+    <button class="set-btn" id="quality-setting">QUALITY: HIGH</button>
+    <button class="set-btn" id="cam-setting">CAMERA: CHASE</button>
+    <button class="set-btn" id="mute-setting">SOUND ON</button>
+  </div>
+</div>
+
+<div class="screen" id="over-screen">
+  <div class="kicker">TALON-1 · SORTIE LOST</div>
+  <div class="end-title lose">SHOT DOWN</div>
+  <div class="subtitle">THE CRIMSON WING HOLDS THE SKY — FOR NOW</div>
+  <div class="debrief" id="over-stats"></div>
+  <div class="btn-row">
+    <button class="big-btn" id="btn-again">↻ &nbsp;FLY AGAIN</button>
+    <button class="ghost-btn" id="btn-title-over">TITLE</button>
+  </div>
+</div>
+
+<div class="screen" id="win-screen">
+  <div class="kicker">TALON SQUADRON · ALL WAVES CLEAR</div>
+  <div class="end-title win">★ SKY SECURED ★</div>
+  <div class="subtitle">THE CRIMSON ACE IS DOWN — THE COAST IS YOURS, TALON-1</div>
+  <div class="debrief" id="win-stats"></div>
+  <div class="btn-row">
+    <button class="big-btn" id="btn-again-win">↻ &nbsp;FLY AGAIN</button>
+    <button class="ghost-btn" id="btn-title-win">TITLE</button>
+  </div>
+</div>
+
+<div class="screen" id="pause-screen">
+  <div class="kicker">PAUSED</div>
+  <div class="end-title">HOLDING PATTERN</div>
+  <div class="btn-row">
+    <button class="big-btn" id="btn-resume">▶ &nbsp;RESUME</button>
+    <button class="ghost-btn" id="btn-restart">RESTART</button>
+    <button class="ghost-btn" id="btn-quit-title">TITLE</button>
+  </div>
+</div>
+
+<div id="webgl-error"></div>
+
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>
