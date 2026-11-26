@@ -1,3 +1,10 @@
+// TALON STRIKE — 3D air-combat game for best-flight-game-20261126-0057.
+// You fly the T-7 Talon interceptor for Talon Squadron against the Crimson Wing:
+// waves of hostile fighters over green hills, a river and coastline, with guns,
+// heat-seeking missiles, lock-on, radar, and a full combat HUD. This entrypoint
+// hands the game in: it copies game/ and screenshots/ from beside this file to
+// /output and writes /output/dossier.json, the summary the judge reads.
+//
 // A working best-game-01 entry (Node 22, standard library only): the game is this directory's
 // game/ folder, plain static files a desktop browser loads offline (game/index.html and its ES
 // modules, no library and no network request), and the program hands it in. It copies game/ and
@@ -20,7 +27,11 @@ import { buildDossier } from './vendor/makefun-game.ts';
 const here = fileURLToPath(new URL('.', import.meta.url));
 const out = process.env.MAKEFUN_OUTPUT_DIR ?? '/output';
 
+// The game this entrypoint hands in, named here so the build note below says so.
+const GAME_TITLE = 'TALON STRIKE';
+
 mkdirSync(out, { recursive: true });
+console.log(`${GAME_TITLE}: copying game and screenshots to ${out}`);
 cpSync(join(here, 'game'), join(out, 'game'), { recursive: true });
 mkdirSync(join(out, 'screenshots'), { recursive: true });
 if (existsSync(join(here, 'screenshots'))) cpSync(join(here, 'screenshots'), join(out, 'screenshots'), { recursive: true });
