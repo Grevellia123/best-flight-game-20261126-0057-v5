@@ -59,13 +59,16 @@ function drawTape(el, value, step, unit, label) {
       g.shadowBlur = 0;
     }
   }
-  // Centre value box: faint fill, hairline outline.
+  // Centre value box: faint fill, hairline outline. It spans the full
+  // tape width (edge to edge) so the dark box reads exactly as wide as
+  // the square button above the tape — a 2px inset on each side left it
+  // 4px narrower than the button and the mismatch was visible.
   const val = String(Math.round(value));
   g.fillStyle = 'rgba(8, 18, 26, 0.30)';
   g.strokeStyle = 'rgba(127, 212, 255, 0.7)';
   g.lineWidth = 1;
-  const bw = w - 4, bh = 26;
-  g.beginPath(); g.rect(2, cy - bh / 2, bw, bh); g.fill(); g.stroke();
+  const bw = w - 1, bh = 26;
+  g.beginPath(); g.rect(0.5, cy - bh / 2, bw, bh); g.fill(); g.stroke();
   g.fillStyle = '#aee6ff';
   g.font = val.length > 4 ? '700 11px ui-monospace, monospace' : '700 13px ui-monospace, monospace';
   g.textAlign = 'center';

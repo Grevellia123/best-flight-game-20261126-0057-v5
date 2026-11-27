@@ -18,7 +18,10 @@
   ticks, smaller type, and a hairline centre box. The three square
   icon buttons (mute, pause, fullscreen) are now fixed to exactly
   44 px wide too — without that, their emoji and side padding
-  stretched them to ~65 px and the tape still looked narrower.
+  stretched them to ~65 px and the tape still looked narrower. The
+  centre value box on the tapes now spans the full tape width too —
+  its 2 px inset on each side had left the dark box 4 px narrower
+  than the button above it.
 - The chase camera moved in close: 30 m behind the jet to 20 m, at
   the same look-down angle, so the T-7 fills the frame like a close
   chase view instead of sitting small in the distance. The cockpit
