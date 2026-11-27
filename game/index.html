@@ -333,14 +333,22 @@
      the reference menu's layout, on TALON's own scene. The other screens
      (over / win / pause) keep the centred .screen layout; only
      #title-screen is left-aligned. */
+  /* The title screen packs its column at the top and centres it with
+     auto margins on .lobby-col, instead of the .screen's plain centre:
+     the old centre overrode .screen's safe centre, so when a panel
+     opened and the column grew taller than a short phone screen, the
+     top of the column (the HANGAR button) was pushed above the scroll
+     origin and could not be reached by scrolling at all. With auto
+     margins the column centres when it fits and starts at the top,
+     fully scrollable, when it doesn't. */
   #title-screen {
-    align-items: flex-start; justify-content: center; text-align: left;
+    align-items: flex-start; justify-content: flex-start; text-align: left;
     padding: 24px clamp(20px, 5vw, 90px);
     background:
       linear-gradient(90deg, rgba(5,10,16,0.55) 0%, rgba(5,10,16,0.18) 42%, rgba(5,10,16,0.04) 70%, rgba(5,10,16,0.10) 100%),
       radial-gradient(ellipse at 50% 30%, rgba(10,26,40,0.35) 0%, rgba(5,10,16,0.55) 100%);
   }
-  .lobby-col { display: flex; flex-direction: column; align-items: flex-start; gap: 14px; width: min(560px, 94vw); max-width: 100%; }
+  .lobby-col { display: flex; flex-direction: column; align-items: flex-start; gap: 14px; width: min(560px, 94vw); max-width: 100%; margin: auto 0; }
   #title-screen h1.title { font-size: clamp(40px, 6vw, 72px); text-align: left; }
   #title-screen .subtitle { text-align: left; }
   #lobby-panels { display: flex; flex-direction: column; gap: 14px; width: 100%; }

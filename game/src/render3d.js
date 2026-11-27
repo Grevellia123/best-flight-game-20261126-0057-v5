@@ -684,11 +684,12 @@ export function createScene(container, qualityName, aaSetting = 'auto', jetModel
       _right.set(Math.cos(a), 0, -Math.sin(a));
       const lookShift = 10.2 * camera.aspect;
       desiredLook.set(p.x - _right.x * lookShift, p.y + 4, p.z - _right.z * lookShift);
-      if (snap) { handle.camPos.copy(desiredPos); handle.camLook.copy(desiredLook); }
-      else {
-        handle.camPos.lerp(desiredPos, 1 - Math.pow(0.001, dt));
-        handle.camLook.lerp(desiredLook, 1 - Math.pow(0.001, dt));
-      }
+      // No lerp here: the orbit path is already smooth, and lerping
+      // behind a jet cruising at 90 m/s leaves the camera ~13 m behind
+      // it — that lag shoved the jet to the right edge of the frame
+      // (it sat at ~95% across instead of ~75%).
+      handle.camPos.copy(desiredPos);
+      handle.camLook.copy(desiredLook);
     } else {
       // v5.11: chase camera 14m behind, jet further left of centre and
       // a little lower in frame. The camera dollies right of the jet's

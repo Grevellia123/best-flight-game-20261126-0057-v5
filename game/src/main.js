@@ -635,20 +635,18 @@ function frame(now) {
   // inside the play branch, so the shortcut did nothing on the title.
   if (input.muteToggle) { input.muteToggle = false; toggleMute(); }
 
-  // Title drift: slow cruise so the backdrop lives.
+  // Title drift: the jet flies a slow circle around home base, so it
+  // stays in the lobby view. The old straight cruise flew it to the
+  // map edge, teleported it up to 600 m, and the camera lost it for a
+  // second or two — on a phone the jet was simply gone from the lobby.
   if (world.screen === 'title' && !frozen) {
     const p = world.player;
-    titleAngle += dt * 0.05;
-    p.yaw = 0.3 * Math.sin(titleAngle * 2);
+    titleAngle += dt * 0.15; // 90 m/s around a 600 m circle
+    p.x = 600 * Math.sin(titleAngle);
+    p.z = 600 * Math.cos(titleAngle);
+    p.yaw = titleAngle - Math.PI / 2;
     p.pitch = 0.02;
     p.speed = 90;
-    const nx = -Math.sin(p.yaw), nz = -Math.cos(p.yaw);
-    p.x += nx * p.speed * dt;
-    p.z += nz * p.speed * dt;
-    if (Math.abs(p.x) > 1800 || p.z < -1800 || p.z > 1800) {
-      p.x = clamp(p.x, -1200, 1200); p.z = clamp(p.z, -1200, 1200);
-      p.yaw += Math.PI * 0.5;
-    }
     world.time += dt;
   }
 

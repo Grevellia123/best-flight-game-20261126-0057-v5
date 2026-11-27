@@ -1,5 +1,12 @@
 # TALON STRIKE — Changelog
 
+## v5.21 — 27 November 2026
+
+### Settings panel no longer cuts the menu off, jet stays in the lobby, sharper picture
+- Opening SETTINGS in the lobby pushed the HANGAR button off the top of the screen, and you could not scroll back to it — it stayed cut off while the panel was open. The title screen centred its column with plain `center`, which shoves the top of the column above the scroll area when the column grows taller than a short phone screen. The column now centres with auto margins instead, so it sits in the middle when it fits and starts at the top, fully scrollable, when a panel is open. Checked on a phone-landscape screen: HANGAR stays visible when SETTINGS opens, and the bottom of the panel is reachable by scrolling. The pause screen did not have this bug — RESUME stays visible there too.
+- The jet kept leaving the lobby: on the title screen it cruised straight until it hit the map edge, jumped up to 600 m sideways, and the camera lost it for a second or two — on a phone the jet was simply gone. It now flies a slow circle around home base, 600 m out, so it never leaves the lobby area. The camera also stopped lagging behind it: it used to chase the jet with a smoothing delay, which shoved the jet to the very right edge of the frame (about 95% across). The camera now sits exactly on its orbit path, and the jet holds steady at about 75% across.
+- The plane looked blurry in flight because MEDIUM rendered the 3D scene at the screen's CSS size and the phone then stretched it about 2.5x to fill its real pixels. MEDIUM now renders at 1.5x, so the jet and the terrain are much sharper. If the phone cannot hold the frame rate at that sharpness, the game still steps itself down to LOW (shedding the bloom, then the resolution) to stay smooth — if it goes soft again on your phone, say so.
+
 ## v5.20 — 27 November 2026
 
 ### Portrait lobby fixed: bottom lines no longer overlap, jet back in frame

@@ -77,8 +77,11 @@ export const CFG = {
   quality: {
     // post: golden-hour post level — 0 off, 1 reduced bloom + light rays,
     // 2 full bloom + god rays. The FPS auto step-down sheds post first.
+    // pixelRatio caps the render resolution against the screen's density:
+    // at 1.0 a phone renders at CSS size and upscales ~2.5x, which is why
+    // the jet looked blurry on MEDIUM. MEDIUM now renders at 1.5x.
     low:    { pixelRatio: 0.75, clouds: 14, particles: 0.4, shadows: false, streaks: false, post: 0 },
-    medium: { pixelRatio: 1.0,  clouds: 26, particles: 0.7, shadows: false, streaks: true,  post: 1 },
+    medium: { pixelRatio: 1.5,  clouds: 26, particles: 0.7, shadows: false, streaks: true,  post: 1 },
     high:   { pixelRatio: 2.0,  clouds: 40, particles: 1.0, shadows: true,  streaks: true,  post: 2 },
   },
 };
