@@ -34,9 +34,13 @@
     left: calc(12px + env(safe-area-inset-left, 0px)); right: calc(12px + env(safe-area-inset-right, 0px));
     display: flex; align-items: flex-start; justify-content: space-between; gap: 8px;
   }
+  /* v5.8 minimal HUD: in-flight panels are transparent — text floats
+     over the scene with a soft shadow instead of a dark box, so the
+     game stays visible. Menus and screens keep their panels. */
   #wave-info {
     flex: 0 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     padding: 8px 12px; font-size: 14px; font-weight: 700; letter-spacing: 0.06em;
+    background: transparent; border-color: transparent; text-shadow: 0 1px 4px rgba(0,0,0,0.65);
   }
   #compass { flex: 1 1 120px; min-width: 120px; max-width: 320px; height: 56px; }
   #wave-info .gold { color: var(--gold); }
@@ -47,25 +51,30 @@
   #wave-sub {
     position: absolute; top: calc(48px + env(safe-area-inset-top, 0px)); left: calc(12px + env(safe-area-inset-left, 0px));
     padding: 5px 10px; font-size: 11px; letter-spacing: 0.05em; color: var(--hud-dim);
+    background: transparent; border-color: transparent; text-shadow: 0 1px 4px rgba(0,0,0,0.65);
   }
   #killfeed {
     position: absolute; top: calc(118px + env(safe-area-inset-top, 0px)); left: calc(12px + env(safe-area-inset-left, 0px));
     font-size: 11px; letter-spacing: 0.04em;
   }
-  .feed-line { padding: 3px 8px; margin-bottom: 3px; background: rgba(8, 18, 26, 0.6); border-left: 2px solid var(--gold); animation: feedin 0.2s ease-out; }
+  .feed-line { padding: 3px 8px; margin-bottom: 3px; background: transparent; border-left: 2px solid var(--gold); text-shadow: 0 1px 4px rgba(0,0,0,0.65); animation: feedin 0.2s ease-out; }
   @keyframes feedin { from { opacity: 0; transform: translateX(-8px); } to { opacity: 1; } }
   #top-btns { flex: 0 0 auto; display: flex; gap: 8px; }
   #msg {
     position: absolute; top: calc(78px + env(safe-area-inset-top, 0px)); left: 50%; transform: translateX(-50%);
     padding: 7px 18px; font-size: 13px; font-weight: 700; letter-spacing: 0.08em; color: #ffe9b0;
-    background: rgba(8, 18, 26, 0.72); border: 1px solid rgba(255, 176, 32, 0.5); border-radius: 4px;
+    background: transparent; border-color: transparent; text-shadow: 0 1px 6px rgba(0,0,0,0.7);
     transition: opacity 0.4s; white-space: nowrap; max-width: 92vw; overflow: hidden; text-overflow: ellipsis;
   }
-  #ias-tape { position: absolute; left: calc(10px + env(safe-area-inset-left, 0px)); top: 50%; transform: translateY(-50%); width: 62px; height: 230px; }
-  #alt-tape { position: absolute; right: calc(10px + env(safe-area-inset-right, 0px)); top: 50%; transform: translateY(-50%); width: 62px; height: 230px; }
+  /* Tapes are 44px — the same width as the square top-right buttons
+     above them (.hud-btn min-width 44px), so the ALT tape lines up
+     with the button above it instead of hanging wider. */
+  #ias-tape { position: absolute; left: calc(10px + env(safe-area-inset-left, 0px)); top: 50%; transform: translateY(-50%); width: 44px; height: 230px; }
+  #alt-tape { position: absolute; right: calc(10px + env(safe-area-inset-right, 0px)); top: 50%; transform: translateY(-50%); width: 44px; height: 230px; }
   #bars {
     position: absolute; left: calc(12px + env(safe-area-inset-left, 0px)); bottom: calc(12px + env(safe-area-inset-bottom, 0px));
     width: 250px; padding: 10px 12px; font-size: 11px;
+    background: transparent; border-color: transparent; text-shadow: 0 1px 4px rgba(0,0,0,0.65);
   }
   .bar-row { display: flex; align-items: center; gap: 8px; margin: 4px 0; }
   .bar-row label { width: 86px; letter-spacing: 0.05em; color: var(--hud-dim); }
@@ -93,7 +102,7 @@
   }
   .hud-btn {
     pointer-events: auto; cursor: pointer;
-    background: var(--panel); border: 1px solid var(--panel-line); color: var(--hud);
+    background: rgba(8, 18, 26, 0.28); border: 1px solid rgba(140, 220, 255, 0.28); color: var(--hud);
     font: 700 12px ui-monospace, monospace; letter-spacing: 0.06em;
     min-width: 44px; min-height: 44px; padding: 6px 12px; border-radius: 6px;
   }
@@ -128,7 +137,7 @@
     pointer-events: auto; position: absolute;
     display: flex; align-items: center; justify-content: center;
     min-width: 64px; min-height: 64px; border-radius: 50%;
-    background: rgba(8, 18, 26, 0.55); border: 2px solid rgba(140, 220, 255, 0.5);
+    background: rgba(8, 18, 26, 0.28); border: 1px solid rgba(140, 220, 255, 0.35);
     color: var(--hud); font: 700 13px ui-monospace, monospace; letter-spacing: 0.04em;
   }
   .touch-btn:active { background: rgba(140, 220, 255, 0.35); }
@@ -224,7 +233,7 @@
     .big-btn { font-size: 15px; letter-spacing: 0.08em; padding: 14px 20px; min-height: 52px; }
     #bars { width: 200px; }
     #radar { width: 104px; height: 104px; }
-    #ias-tape, #alt-tape { height: 170px; width: 52px; }
+    #ias-tape, #alt-tape { height: 170px; width: 44px; }
     .debrief { grid-template-columns: 1fr; }
     .touch-hint { display: none; }
   }
@@ -251,7 +260,7 @@
     /* Wave banner: narrow pill in the top zone, clear of the centre reticle
        and of enemies flying through the middle — it used to span 92vw and
        cover the lock indicator, distance text and the bandit behind it. */
-    #msg { top: calc(128px + env(safe-area-inset-top, 0px)); font-size: 11px; padding: 5px 12px; max-width: 60vw; background: rgba(8, 18, 26, 0.55); }
+    #msg { top: calc(128px + env(safe-area-inset-top, 0px)); font-size: 11px; padding: 5px 12px; max-width: 60vw; background: transparent; }
     /* dvh, not vh: on Chrome Android 100vh is the large viewport (URL bar
        hidden) while the bottom-anchored buttons use the visible viewport,
        so a vh-sized tape grew ~40px too tall and ran over the bars panel

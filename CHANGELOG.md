@@ -1,5 +1,26 @@
 # TALON STRIKE — Changelog
 
+## v5.8 — 27 November 2026
+
+### Minimal HUD, jet up close
+- The in-flight HUD is now minimal: the wave pill, the "FIRST CONTACT
+  — 3 HOSTILES" line, the message banner, the kill feed and the
+  fuel/hull/heat/missile bars no longer sit on dark panels — the text
+  floats over the scene with a soft shadow, so you see more sky and
+  ground. The compass, the speed and altitude tapes and the radar
+  lost their panel backgrounds too; the radar is now a faint disc.
+  Buttons (COCKPIT, mute, pause, fullscreen, FIRE, MSL) keep a faint
+  fill so they still read as buttons over a bright sky. Menus and
+  screens are unchanged.
+- The ALT tape (and the IAS tape, to match) is now 44 px wide — the
+  same width as the square top-right buttons above it — instead of
+  62 px. The tapes were redrawn for the narrower width: shorter
+  ticks, smaller type, and a hairline centre box.
+- The chase camera moved in close: 30 m behind the jet to 20 m, at
+  the same look-down angle, so the T-7 fills the frame like a close
+  chase view instead of sitting small in the distance. The cockpit
+  camera and the title-screen orbit are unchanged.
+
 ## v5.7 — 27 November 2026
 
 ### Settings on the pause screen, wave banner tucked under the wave pill

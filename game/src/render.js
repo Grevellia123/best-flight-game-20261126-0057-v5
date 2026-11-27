@@ -27,50 +27,57 @@ function setupCanvas(el, maxDpr = 1.5) {
   return { g, w, h };
 }
 
-// Vertical tape: numbers scroll past a fixed centre box.
+// Vertical tape: numbers scroll past a fixed centre box. v5.8 minimal:
+// no panel behind the tape — hairline ticks and a faint centre box float
+// over the scene, with a soft text shadow so the numbers stay readable.
+// The tape is 44px wide (same as the square top-right buttons above it),
+// so ticks and type are sized to fit: major ticks 10px, centre value 13px
+// (11px if it ever reaches 5 digits).
 function drawTape(el, value, step, unit, label) {
   const s = setupCanvas(el);
   if (!s) return;
   const { g, w, h } = s;
   g.clearRect(0, 0, w, h);
   const cy = h / 2;
-  g.fillStyle = 'rgba(8, 18, 26, 0.55)';
-  g.fillRect(0, 0, w, h);
-  g.strokeStyle = 'rgba(140, 220, 255, 0.35)';
-  g.lineWidth = 1;
-  g.strokeRect(0.5, 0.5, w - 1, h - 1);
   const pxPerUnit = 34 / step;
   const top = value + (h / 2) / pxPerUnit;
   const bottom = value - (h / 2) / pxPerUnit;
-  g.font = '600 11px ui-monospace, monospace';
+  g.shadowBlur = 0;
+  g.font = '600 10px ui-monospace, monospace';
   g.textAlign = 'left';
   const start = Math.ceil(bottom / step) * step;
   for (let v = start; v <= top; v += step) {
     const y = cy - (v - value) * pxPerUnit;
     const major = v % (step * 5) === 0;
     g.strokeStyle = major ? 'rgba(180, 230, 255, 0.8)' : 'rgba(140, 220, 255, 0.35)';
-    g.beginPath(); g.moveTo(w - (major ? 16 : 9), y); g.lineTo(w, y); g.stroke();
+    g.lineWidth = 1;
+    g.beginPath(); g.moveTo(w - (major ? 10 : 5), y); g.lineTo(w, y); g.stroke();
     if (major) {
       g.fillStyle = 'rgba(200, 235, 255, 0.9)';
-      g.fillText(String(Math.round(v)), 6, y + 4);
+      g.shadowColor = 'rgba(0, 0, 0, 0.6)'; g.shadowBlur = 3;
+      g.fillText(String(Math.round(v)), 4, y + 3);
+      g.shadowBlur = 0;
     }
   }
-  // Centre value box.
-  g.fillStyle = '#0e2a3a';
-  g.strokeStyle = '#7fd4ff';
-  g.lineWidth = 1.5;
-  const bw = w - 6, bh = 26;
-  g.beginPath(); g.rect(3, cy - bh / 2, bw, bh); g.fill(); g.stroke();
+  // Centre value box: faint fill, hairline outline.
+  const val = String(Math.round(value));
+  g.fillStyle = 'rgba(8, 18, 26, 0.30)';
+  g.strokeStyle = 'rgba(127, 212, 255, 0.7)';
+  g.lineWidth = 1;
+  const bw = w - 4, bh = 26;
+  g.beginPath(); g.rect(2, cy - bh / 2, bw, bh); g.fill(); g.stroke();
   g.fillStyle = '#aee6ff';
-  g.font = '700 15px ui-monospace, monospace';
+  g.font = val.length > 4 ? '700 11px ui-monospace, monospace' : '700 13px ui-monospace, monospace';
   g.textAlign = 'center';
-  g.fillText(String(Math.round(value)), w / 2, cy + 5);
+  g.shadowColor = 'rgba(0, 0, 0, 0.6)'; g.shadowBlur = 3;
+  g.fillText(val, w / 2, cy + 5);
   g.fillStyle = 'rgba(160, 210, 235, 0.85)';
-  g.font = '600 9px ui-monospace, monospace';
+  g.font = '600 8px ui-monospace, monospace';
   g.textAlign = 'left';
-  g.fillText(label, 6, 14);
+  g.fillText(label, 4, 12);
   g.textAlign = 'right';
-  g.fillText(unit, w - 6, 14);
+  g.fillText(unit, w - 4, 12);
+  g.shadowBlur = 0;
 }
 
 function drawCompass(el, yaw) {
@@ -78,8 +85,8 @@ function drawCompass(el, yaw) {
   if (!s) return;
   const { g, w, h } = s;
   g.clearRect(0, 0, w, h);
-  g.fillStyle = 'rgba(8, 18, 26, 0.55)';
-  g.fillRect(0, 0, w, h);
+  // v5.8 minimal: no panel behind the compass — ticks and numbers float
+  // over the sky, with a soft shadow so they stay readable.
   // Heading: 0 = north (-z). yaw 0 faces north.
   let deg = ((-yaw * 180) / Math.PI) % 360;
   if (deg < 0) deg += 360;
@@ -87,6 +94,7 @@ function drawCompass(el, yaw) {
   const cx = w / 2;
   g.font = '600 11px ui-monospace, monospace';
   g.textAlign = 'center';
+  g.shadowColor = 'rgba(0, 0, 0, 0.6)'; g.shadowBlur = 3;
   const marks = [[0, 'N'], [45, '045'], [90, 'E'], [135, '135'], [180, 'S'], [225, '225'], [270, 'W'], [315, '315']];
   for (let d = -180; d <= 180; d += 15) {
     let hd = (deg + d + 360) % 360;
@@ -102,11 +110,14 @@ function drawCompass(el, yaw) {
     }
   }
   // Centre caret + readout.
+  g.shadowBlur = 0;
   g.fillStyle = '#ffb020';
   g.beginPath(); g.moveTo(cx - 6, 34); g.lineTo(cx + 6, 34); g.lineTo(cx, 42); g.fill();
   g.fillStyle = '#aee6ff';
   g.font = '700 13px ui-monospace, monospace';
+  g.shadowColor = 'rgba(0, 0, 0, 0.6)'; g.shadowBlur = 3;
   g.fillText(String(Math.round(deg)).padStart(3, '0') + '°', cx, h - 8);
+  g.shadowBlur = 0;
 }
 
 function drawRadar(el, world) {
@@ -115,7 +126,7 @@ function drawRadar(el, world) {
   const { g, w, h } = s;
   const cx = w / 2, cy = h / 2, R = w / 2 - 6;
   g.clearRect(0, 0, w, h);
-  g.fillStyle = 'rgba(6, 20, 14, 0.78)';
+  g.fillStyle = 'rgba(6, 20, 14, 0.30)';
   g.beginPath(); g.arc(cx, cy, R + 4, 0, Math.PI * 2); g.fill();
   g.strokeStyle = 'rgba(110, 230, 170, 0.6)';
   g.lineWidth = 1.5;

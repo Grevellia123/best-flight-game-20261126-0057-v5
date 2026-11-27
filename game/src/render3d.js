@@ -567,7 +567,12 @@ export function createScene(container, qualityName) {
         handle.camLook.lerp(desiredLook, 1 - Math.pow(0.001, dt));
       }
     } else {
-      desiredPos.set(p.x - nose.x * 30, p.y - nose.y * 30 + 7.5, p.z - nose.z * 30);
+      // v5.8: chase camera pulled in close (30m → 20m behind, same ~14°
+      // look-down angle) so the jet fills the frame like a close chase
+      // view instead of sitting small in the distance. 20m puts the
+      // ~15m wingspan at ~44% of frame width at 16:9; the flame tip
+      // sits ~11m behind the jet, so the camera stays ~9m clear of it.
+      desiredPos.set(p.x - nose.x * 20, p.y - nose.y * 20 + 5.0, p.z - nose.z * 20);
       desiredLook.set(p.x + nose.x * 80, p.y + nose.y * 80, p.z + nose.z * 80);
       if (snap) { handle.camPos.copy(desiredPos); handle.camLook.copy(desiredLook); }
       else {
