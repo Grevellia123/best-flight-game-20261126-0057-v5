@@ -1,5 +1,16 @@
 # TALON STRIKE — Changelog
 
+## v5.17 — 27 November 2026
+
+### Spin the jet in the lobby
+- On the title screen, slide left or right and the plane turns,
+  so you can look it over before a sortie — pick the T-7 or the
+  F-35 in Settings, then drag on the sky to spin it around. The
+  camera keeps its slow orbit, so the jet is seen from every side.
+  The spin resets when you pick a jet or come back to the title,
+  and it never affects flying: once a sortie starts, the plane
+  flies exactly as before.
+
 ## v5.16 — 27 November 2026
 
 ### Pick your fighter: T-7 Talon or F-35 Lightning II

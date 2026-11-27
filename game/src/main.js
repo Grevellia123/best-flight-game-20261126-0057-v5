@@ -191,6 +191,7 @@ function toTitle() {
   const w2 = createWorld();
   Object.assign(world, w2);
   world.screen = 'title';
+  titleSpin = 0;
   showScreen('title');
   audio.setMood('title');
 }
@@ -390,9 +391,34 @@ $('jet-setting').addEventListener('click', () => {
   settings.jet = JET_ORDER[(JET_ORDER.indexOf(settings.jet) + 1) % JET_ORDER.length];
   saveSettings();
   scene.setPlayerJet(settings.jet);
+  titleSpin = 0; // new jet starts facing forward
   updateJetUI();
   audio.click();
 });
+
+// Title-screen jet spin: slide left/right on the lobby to turn the plane,
+// so you can look it over before a sortie. The title overlay sits above
+// the game canvas, so the play-surface drag never reaches it — listen on
+// the title screen itself. Drags that start on a button or slider are
+// ignored (a volume-slider drag must not spin the jet), and a vertical
+// scroll cancels the spin (pointercancel), so the screen still scrolls
+// on short phones. The camera keeps its slow orbit, so the jet is seen
+// from every side. titleSpin is read by the title drift in frame().
+let titleDrag = null;
+const titleEl = $('title-screen');
+titleEl.addEventListener('pointerdown', (e) => {
+  if (world.screen !== 'title') return;
+  if (e.target.closest('button, input, select, textarea, a')) return;
+  titleDrag = { id: e.pointerId, lastX: e.clientX };
+});
+titleEl.addEventListener('pointermove', (e) => {
+  if (!titleDrag || e.pointerId !== titleDrag.id) return;
+  titleSpin += (e.clientX - titleDrag.lastX) * 0.005;
+  titleDrag.lastX = e.clientX;
+});
+const endTitleDrag = (e) => { if (titleDrag && e.pointerId === titleDrag.id) titleDrag = null; };
+titleEl.addEventListener('pointerup', endTitleDrag);
+titleEl.addEventListener('pointercancel', endTitleDrag);
 // Antialiasing: AUTO → ON → OFF. Applies at renderer creation, so it
 // takes effect when the game next loads — the note in the panel says so.
 // It persists like the other settings.
@@ -580,6 +606,7 @@ function addKillFeed(text) {
 // ---- main loop -----------------------------------------------------------------
 let last = performance.now();
 let titleAngle = 0;
+let titleSpin = 0; // title-screen jet spin, from horizontal drag (see frame)
 // ?timescale=N (verification only): run N world substeps per rendered frame so
 // a full sortie can be played through on slow software renderers. Absent = 1.
 const TIMESCALE = Math.max(1, Math.min(8, Math.round(Number(params.get('timescale') || 1))));
@@ -599,7 +626,7 @@ function frame(now) {
   if (world.screen === 'title' && !frozen) {
     const p = world.player;
     titleAngle += dt * 0.05;
-    p.yaw = 0.3 * Math.sin(titleAngle * 2);
+    p.yaw = titleSpin + 0.3 * Math.sin(titleAngle * 2);
     p.pitch = 0.02;
     p.speed = 90;
     const nx = -Math.sin(p.yaw), nz = -Math.cos(p.yaw);
@@ -656,6 +683,7 @@ window.__talon = {
   autopilot: (on) => { window.__autopilot = on; },
   get fps() { return Math.round(fpsAvg); },
   get cull() { return scene.cullStats; },
+  get titleSpin() { return titleSpin; },
   get settings() { return settings; },
   version: 'v5',
 };
