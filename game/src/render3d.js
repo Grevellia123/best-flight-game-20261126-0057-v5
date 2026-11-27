@@ -667,11 +667,23 @@ export function createScene(container, qualityName, aaSetting = 'auto', jetModel
       handle.camLook.copy(desiredLook);
     } else if (world.screen === 'title') {
       // Slow orbit around the jet for the title screen, framed so the jet
-      // sits in the right third of the frame, clear of the centred title text.
+      // sits in the right third of the frame, clear of the menu on the
+      // left. The look shift is scaled by the camera aspect: a fixed 20 m
+      // offset puts the jet at the same place on a wide screen, but on a
+      // portrait phone the frame is only ~0.45 as wide, so the same 20 m
+      // pushed the jet off the right edge entirely (only a wingtip
+      // showed). Scaling by aspect holds the jet at ~75% across on
+      // every screen: shift = 0.5 * 34 m * tan(31 deg) * aspect.
+      // The orbit radius grows on narrow screens too: in portrait the
+      // jet reads ~2x wider on screen, so at 34 m its wings ran off the
+      // right edge and hid behind the menu buttons. Up to ~42 m in
+      // portrait pulls it back just enough to fit.
       const a = time * 0.12;
-      desiredPos.set(p.x + Math.sin(a) * 34, p.y + 8 + Math.sin(time * 0.3) * 3, p.z + Math.cos(a) * 34);
+      const orbitR = 34 * (1 + 0.25 * Math.max(0, 1 - camera.aspect));
+      desiredPos.set(p.x + Math.sin(a) * orbitR, p.y + 8 + Math.sin(time * 0.3) * 3, p.z + Math.cos(a) * orbitR);
       _right.set(Math.cos(a), 0, -Math.sin(a));
-      desiredLook.set(p.x - _right.x * 20, p.y + 4, p.z - _right.z * 20);
+      const lookShift = 10.2 * camera.aspect;
+      desiredLook.set(p.x - _right.x * lookShift, p.y + 4, p.z - _right.z * lookShift);
       if (snap) { handle.camPos.copy(desiredPos); handle.camLook.copy(desiredLook); }
       else {
         handle.camPos.lerp(desiredPos, 1 - Math.pow(0.001, dt));

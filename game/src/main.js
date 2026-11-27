@@ -345,7 +345,9 @@ function toggleFullscreen() {
   } catch (e) { /* fullscreen unavailable here — ignore */ }
 }
 document.addEventListener('fullscreenchange', () => {
-  $('btn-full').textContent = document.fullscreenElement ? '✕' : '⛶';
+  const icon = document.fullscreenElement ? '✕' : '⛶';
+  $('btn-full').textContent = icon;
+  $('btn-full-lobby').textContent = icon;
 });
 
 // Buttons.
@@ -365,6 +367,7 @@ $('btn-restart').addEventListener('click', () => { world.paused = false; startGa
 $('btn-quit-title').addEventListener('click', () => { world.paused = false; toTitle(); });
 $('btn-mute').addEventListener('click', toggleMute);
 $('btn-full').addEventListener('click', toggleFullscreen);
+$('btn-full-lobby').addEventListener('click', toggleFullscreen);
 // Resolution: Low / Medium / High segmented control. Applies live via
 // scene.setQuality (render scale + bloom/post + clouds) — no reload —
 // and persists. The active tier is highlighted by updateQualityUI.

@@ -355,14 +355,18 @@
   }
   .menu-btn:active { background: rgba(140,220,255,0.25); }
   .menu-btn.active { border-color: var(--gold); background: rgba(255,176,32,0.22); color: #ffe9b0; }
-  /* PLAY keeps the game's gold CTA (the old FLY THE SORTIE button) so the
-     primary action still stands out; HANGAR / SETTINGS match the
-     reference menu's dark translucent buttons. */
-  .menu-btn.play {
-    color: #101c24; background: linear-gradient(180deg, #ffc84d, #ff9d1e);
-    border: none; border-radius: 8px; box-shadow: 0 6px 24px rgba(255,157,30,0.35);
-  }
+  /* PLAY is the same dark translucent button as HANGAR / SETTINGS —
+     no gold: the yellow PLAY stood out from the reference menu, and
+     the user asked for it removed. */
   .menu-btn.play:active { transform: translateY(1px); }
+  /* Fullscreen in the lobby: the same ⛶ button as the in-flight top bar,
+     top-right of the title screen, so the game can go fullscreen before
+     the sortie starts. It lives inside #title-screen, so it only shows
+     on the lobby — in flight the top bar's button does the job. */
+  .lobby-full-btn {
+    position: absolute; top: calc(12px + env(safe-area-inset-top, 0px)); right: calc(12px + env(safe-area-inset-right, 0px));
+    width: 44px; padding: 6px 0;
+  }
   .hangar-panel {
     width: 100%; max-width: 520px;
     background: var(--panel); border: 1px solid var(--panel-line); border-radius: 8px;
@@ -400,8 +404,16 @@
     .hangar-panel, .settings-panel { padding: 10px 12px; gap: 8px; }
   }
   @media (max-width: 640px) {
-    .menu-btn { width: min(340px, 66vw); }
-    .lobby-waves { font-size: 11px; }
+    /* Narrow portrait: the menu narrows so the jet (right of it) stays
+       visible, and the controls line is hidden — on a 360-412px screen
+       both bottom lines wrap to several lines and print over each
+       other (the v5.19 portrait bug). The controls still show in-game
+       (touch hint), and the waves line keeps its own room at the bottom.
+       The buttons are more solid here too: the jet's wing passes behind
+       the menu, and at the old 0.62 fill it ghosted through the buttons. */
+    .menu-btn { width: min(340px, 60vw); background: rgba(28,42,56,0.88); }
+    .lobby-waves { font-size: 11px; line-height: 1.6; bottom: calc(14px + env(safe-area-inset-bottom, 0px)); }
+    .lobby-controls { display: none; }
   }
 </style>
 <script type="importmap">
@@ -447,6 +459,7 @@
 </div>
 
 <div class="screen" id="title-screen">
+  <button class="hud-btn lobby-full-btn" id="btn-full-lobby" aria-label="Fullscreen">⛶</button>
   <div class="lobby-col">
     <div class="kicker">TALON SQUADRON · NORTHERN COAST DEFENCE</div>
     <h1 class="title">TALON<br><span class="strike">STRIKE</span></h1>

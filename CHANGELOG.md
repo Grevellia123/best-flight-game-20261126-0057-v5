@@ -1,5 +1,37 @@
 # TALON STRIKE — Changelog
 
+## v5.20 — 27 November 2026
+
+### Portrait lobby fixed: bottom lines no longer overlap, jet back in frame
+- On a portrait phone the waves line and the controls line at the
+  bottom of the lobby wrapped to several lines each and printed
+  over each other, so neither could be read. The controls line is
+  now hidden on narrow screens (the steering / guns help still
+  shows in-game as the touch hint), and the waves line keeps its
+  own room at the bottom.
+- The jet was missing on portrait phones too — only a wingtip
+  showed at the right edge. The title camera pushed the jet right
+  with a fixed 20 m look offset, which is fine on a wide screen
+  but shoves the jet off the edge when the frame is only ~0.45 as
+  wide. The offset now scales with the screen's aspect, so the jet
+  sits at about 75% across on every screen, portrait included.
+  The menu is a little narrower on portrait phones too, so it
+  doesn't cover the jet. Checked the portrait shot: the jet is
+  back in frame, but its wings still ran off the right edge and
+  its left wing ghosted through the see-through menu buttons — so
+  the title camera also pulls back a little on narrow screens
+  (34 m orbit → ~42 m in portrait) and the menu buttons are more
+  solid there, so the wing hides cleanly behind them instead of
+  showing through.
+- PLAY is no longer yellow: it is the same dark translucent button
+  as HANGAR and SETTINGS, like the reference menu. The gold title
+  and the gold "5 WAVES" line stay.
+- The fullscreen button (⛶) is now in the lobby too, top-right —
+  the same button as the in-flight top bar, so the game can go
+  fullscreen before the sortie starts. It switches to ✕ while
+  fullscreen, in step with the in-flight button.
+- Nothing else changed: same lobby, same flight model, same waves.
+
 ## v5.19 — 27 November 2026
 
 ### New lobby: PLAY / HANGAR / SETTINGS, jet big on the right
