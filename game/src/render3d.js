@@ -23,11 +23,6 @@ const _proj = new THREE.Vector3();
 const _frustum = new THREE.Frustum();
 const _projMat = new THREE.Matrix4();
 const _sphere = new THREE.Sphere();
-
-// v5.12: tracer vertex colours, hoisted — the old code built a fresh
-// [r, g, b] array for every bullet every frame.
-const TRACER_PLAYER = [1, 0.85, 0.3];
-const TRACER_ENEMY = [1.3, 0.35, 0.28];
 const sstep = (a, b, x) => {
   const t = Math.min(1, Math.max(0, (x - a) / (b - a)));
   return t * t * (3 - 2 * t);
@@ -50,9 +45,7 @@ function cloudTexture() {
   return t;
 }
 
-let _glowTex = null;
 function glowTexture() {
-  if (_glowTex) return _glowTex;
   const c = document.createElement('canvas');
   c.width = 64; c.height = 64;
   const g = c.getContext('2d');
@@ -61,126 +54,72 @@ function glowTexture() {
   grad.addColorStop(0.4, 'rgba(255,140,60,0.55)');
   grad.addColorStop(1, 'rgba(255,120,40,0)');
   g.fillStyle = grad; g.fillRect(0, 0, 64, 64);
-  _glowTex = new THREE.CanvasTexture(c);
-  return _glowTex;
-}
-
-// v5.12 perf — shared jet resources (the InstancedMesh / .dispose()
-// item). Every jet used to build its own geometries, materials and glow
-// texture, and enemy jets were removed from the scene without
-// .dispose() — so each wave leaked ~15 GPU buffers per bandit. All jets
-// now share one set of geometries; materials are cached per colour set
-// (player / enemy) and the glow texture is built once. Nothing a jet
-// owns is per-jet GPU state any more, so removing a jet needs no
-// dispose: the shared resources stay alive for the jets still flying.
-// (True InstancedMesh was skipped: each jet's flame scales and glow
-// opacity are per-jet, and the glow is a Sprite — instancing would
-// need a custom shader for no measurable gain at ~6 jets. Rings pulse
-// opacity per ring and clouds are Sprites, so neither can instance
-// either; both are a handful of cheap draws as-is.)
-let _jetGeo = null;
-function jetGeometries() {
-  if (_jetGeo) return _jetGeo;
-  const wingShape = new THREE.Shape();
-  wingShape.moveTo(0, -4.6); wingShape.lineTo(5.6, 1.4); wingShape.lineTo(5.6, 2.6);
-  wingShape.lineTo(1.2, 2.6); wingShape.lineTo(0, 1.2); wingShape.closePath();
-  _jetGeo = {
-    fus: new THREE.CylinderGeometry(1.15, 1.35, 7.2, 10),
-    nose: new THREE.ConeGeometry(1.15, 3.4, 10),
-    noseTip: new THREE.ConeGeometry(0.5, 1.1, 8),
-    wing: new THREE.ExtrudeGeometry(wingShape, { depth: 0.28, bevelEnabled: false }),
-    tip: new THREE.BoxGeometry(0.22, 0.2, 2.2),
-    fin: new THREE.BoxGeometry(0.22, 2.6, 2.4),
-    finTip: new THREE.BoxGeometry(0.24, 0.7, 1.6),
-    canopy: new THREE.SphereGeometry(0.95, 12, 10),
-    intake: new THREE.BoxGeometry(1.5, 0.8, 2.6),
-    nozzle: new THREE.CylinderGeometry(0.95, 1.15, 1.2, 10),
-    stripe: new THREE.BoxGeometry(2.32, 0.22, 6.4),
-    flame: new THREE.ConeGeometry(0.85, 3.6, 10),
-  };
-  return _jetGeo;
-}
-const _jetMats = new Map();
-let _flameMat = null;
-function jetMaterials(body, accent, canopy) {
-  const key = `${body}|${accent}|${canopy}`;
-  let m = _jetMats.get(key);
-  if (m) return m;
-  // Per colour set: body / accent / canopy glass / engine glow. The
-  // glow's opacity is set per jet in sync(), but only one jet ever
-  // uses a given colour set's glow (the player alone, or all enemies
-  // at the same constant 0.25), so sharing it is safe. Dark metal and
-  // the flame are colour-independent and shared by every jet.
-  const glowMat = new THREE.SpriteMaterial({ map: glowTexture(), transparent: true, opacity: 0.7, depthWrite: false });
-  glowMat.color.setRGB(1.8, 1.3, 0.8); // HDR engine glow: blooms
-  if (!_flameMat) {
-    _flameMat = new THREE.MeshBasicMaterial({ color: 0xffa040, transparent: true, opacity: 0.9 });
-    _flameMat.color.multiplyScalar(1.6);
-  }
-  m = {
-    body: new THREE.MeshStandardMaterial({ color: body, metalness: 0.55, roughness: 0.4 }),
-    accent: new THREE.MeshStandardMaterial({ color: accent, metalness: 0.4, roughness: 0.45 }),
-    dark: new THREE.MeshStandardMaterial({ color: 0x2a2f36, metalness: 0.6, roughness: 0.5 }),
-    glass: new THREE.MeshStandardMaterial({ color: canopy, metalness: 0.9, roughness: 0.12 }),
-    flame: _flameMat,
-    glow: glowMat,
-  };
-  _jetMats.set(key, m);
-  return m;
+  return new THREE.CanvasTexture(c);
 }
 
 // A fighter jet built from primitives, nose pointing along local -z.
-// Geometries and materials are shared across all jets (see
-// jetGeometries / jetMaterials above): only the Groups, Meshes and
-// Sprites are per-jet, so spawning a bandit allocates no GPU state.
 function buildJet({ body, accent, canopy, scale = 1 }) {
   const g = new THREE.Group();
-  const geo = jetGeometries();
-  const mat = jetMaterials(body, accent, canopy);
-  const matBody = mat.body, matAccent = mat.accent, matDark = mat.dark, matGlass = mat.glass;
+  const matBody = new THREE.MeshStandardMaterial({ color: body, metalness: 0.55, roughness: 0.4 });
+  const matAccent = new THREE.MeshStandardMaterial({ color: accent, metalness: 0.4, roughness: 0.45 });
+  const matDark = new THREE.MeshStandardMaterial({ color: 0x2a2f36, metalness: 0.6, roughness: 0.5 });
+  const matGlass = new THREE.MeshStandardMaterial({ color: canopy, metalness: 0.9, roughness: 0.12 });
 
-  const fus = new THREE.Mesh(geo.fus, matBody);
+  const fus = new THREE.Mesh(new THREE.CylinderGeometry(1.15, 1.35, 7.2, 10), matBody);
   fus.rotation.x = Math.PI / 2; g.add(fus);
-  const nose = new THREE.Mesh(geo.nose, matBody);
+  const nose = new THREE.Mesh(new THREE.ConeGeometry(1.15, 3.4, 10), matBody);
   nose.rotation.x = -Math.PI / 2; nose.position.z = -5.3; g.add(nose);
-  const noseTip = new THREE.Mesh(geo.noseTip, matAccent);
+  const noseTip = new THREE.Mesh(new THREE.ConeGeometry(0.5, 1.1, 8), matAccent);
   noseTip.rotation.x = -Math.PI / 2; noseTip.position.z = -7.4; g.add(noseTip);
   // Delta wing: one swept slab.
-  const wingR = new THREE.Mesh(geo.wing, matBody);
+  const wingShape = new THREE.Shape();
+  wingShape.moveTo(0, -4.6); wingShape.lineTo(5.6, 1.4); wingShape.lineTo(5.6, 2.6);
+  wingShape.lineTo(1.2, 2.6); wingShape.lineTo(0, 1.2); wingShape.closePath();
+  const wingGeo = new THREE.ExtrudeGeometry(wingShape, { depth: 0.28, bevelEnabled: false });
+  const wingR = new THREE.Mesh(wingGeo, matBody);
   wingR.rotation.x = -Math.PI / 2; wingR.position.y = -0.1; g.add(wingR);
-  const wingL = new THREE.Mesh(geo.wing, matBody);
+  const wingL = new THREE.Mesh(wingGeo, matBody);
   wingL.rotation.x = -Math.PI / 2; wingL.scale.x = -1;
   wingL.position.y = -0.1; g.add(wingL);
   // Wing-tip accent.
+  const tipGeo = new THREE.BoxGeometry(0.22, 0.2, 2.2);
   for (const s of [-1, 1]) {
-    const tip = new THREE.Mesh(geo.tip, matAccent);
+    const tip = new THREE.Mesh(tipGeo, matAccent);
     tip.position.set(s * 5.5, -0.05, 1.6); tip.rotation.y = s * 0.35; g.add(tip);
   }
   // Twin tail fins, canted out.
+  const finGeo = new THREE.BoxGeometry(0.22, 2.6, 2.4);
   for (const s of [-1, 1]) {
-    const fin = new THREE.Mesh(geo.fin, matBody);
+    const fin = new THREE.Mesh(finGeo, matBody);
     fin.position.set(s * 1.5, 1.5, 3.4); fin.rotation.z = -s * 0.35; fin.rotation.y = s * 0.25; g.add(fin);
-    const finTip = new THREE.Mesh(geo.finTip, matAccent);
+    const finTip = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.7, 1.6), matAccent);
     finTip.position.set(s * 1.95, 2.6, 3.4); finTip.rotation.z = -s * 0.35; g.add(finTip);
   }
   // Bubble canopy.
-  const can = new THREE.Mesh(geo.canopy, matGlass);
+  const can = new THREE.Mesh(new THREE.SphereGeometry(0.95, 12, 10), matGlass);
   can.scale.set(0.85, 0.75, 1.9); can.position.set(0, 0.95, -1.6); g.add(can);
   // Belly intake + exhaust.
-  const intake = new THREE.Mesh(geo.intake, matDark);
+  const intake = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.8, 2.6), matDark);
   intake.position.set(0, -1.0, 0.6); g.add(intake);
-  const nozzle = new THREE.Mesh(geo.nozzle, matDark);
+  const nozzle = new THREE.Mesh(new THREE.CylinderGeometry(0.95, 1.15, 1.2, 10), matDark);
   nozzle.rotation.x = Math.PI / 2; nozzle.position.z = 4.1; g.add(nozzle);
   // Cheatline stripe.
-  const stripe = new THREE.Mesh(geo.stripe, matAccent);
+  const stripe = new THREE.Mesh(new THREE.BoxGeometry(2.32, 0.22, 6.4), matAccent);
   stripe.position.set(0, 0.35, -0.6); g.add(stripe);
   // Afterburner flame (scaled by throttle in sync). Colour > 1 so the
   // flame is HDR and passes the bloom threshold (see post.js).
-  const flame = new THREE.Mesh(geo.flame, mat.flame);
+  const flameMat = new THREE.MeshBasicMaterial({ color: 0xffa040, transparent: true, opacity: 0.9 });
+  flameMat.color.multiplyScalar(1.6);
+  const flame = new THREE.Mesh(
+    new THREE.ConeGeometry(0.85, 3.6, 10),
+    flameMat,
+  );
   flame.rotation.x = Math.PI / 2; flame.position.z = 6.2;
   flame.name = 'flame';
   g.add(flame);
-  const glow = new THREE.Sprite(mat.glow);
+  const glowTex = glowTexture();
+  const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, transparent: true, opacity: 0.7, depthWrite: false }));
+  glow.material.color.setRGB(1.8, 1.3, 0.8); // HDR engine glow: blooms
   glow.scale.set(5, 5, 1); glow.position.z = 5.6; glow.name = 'glow';
   g.add(glow);
   g.scale.setScalar(scale);
@@ -390,10 +329,7 @@ export function createScene(container, qualityName) {
     m.add(trail);
     m.visible = false;
     scene.add(m);
-    // v5.12: the missile trail is a ring buffer over a pre-allocated
-    // Float32Array — the old mm.history.push([x, y, z]) allocated a
-    // fresh array per missile per frame and shift() was O(n).
-    missileMeshes.push({ group: m, trail, trailPos: new Float32Array(TRAIL_POINTS * 3), trailHead: 0, trailCount: 0 });
+    missileMeshes.push({ group: m, trail, history: [] });
   }
 
   // Explosions: pooled point bursts + flash sprites.
@@ -463,19 +399,16 @@ export function createScene(container, qualityName) {
   };
 
   // Project a world point to CSS pixels in the container (for the HUD overlay).
-  // v5.12: returns the shared _projResult object instead of a fresh one
-  // per call — callers use it immediately, never store it.
-  const _projResult = { x: 0, y: 0, dist: 0, visible: true };
   handle.project = (x, y, z) => {
     const v = _proj.set(x, y, z);
     const dist = v.distanceTo(camera.position);
     v.project(camera);
     if (v.z > 1 || v.x < -1.1 || v.x > 1.1 || v.y < -1.1 || v.y > 1.1) return null;
-    _projResult.x = (v.x * 0.5 + 0.5) * container.clientWidth;
-    _projResult.y = (-v.y * 0.5 + 0.5) * container.clientHeight;
-    _projResult.dist = dist;
-    _projResult.visible = true;
-    return _projResult;
+    return {
+      x: (v.x * 0.5 + 0.5) * container.clientWidth,
+      y: (-v.y * 0.5 + 0.5) * container.clientHeight,
+      dist, visible: true,
+    };
   };
 
   handle.resize = () => {
@@ -507,12 +440,11 @@ export function createScene(container, qualityName) {
     glow.material.opacity = 0.35 + burn * 0.4;
     playerJet.visible = camMode !== 'cockpit' || world.screen === 'title';
 
-    // Enemies. v5.12: no per-frame Set for the seen check — each mesh
-    // carries a userData.seen flag, set here and cleared in the cleanup
-    // loop below, so sync allocates nothing for enemy tracking.
+    // Enemies.
+    const seen = new Set();
     for (const e of world.enemies) {
+      seen.add(e.id);
       const m = enemyMesh(e.id);
-      m.userData.seen = true;
       m.position.set(e.x, e.y, e.z);
       m.rotation.order = 'YXZ';
       m.rotation.y = e.yaw;
@@ -524,21 +456,16 @@ export function createScene(container, qualityName) {
       if (gl) gl.material.opacity = 0.25;
     }
     for (const [id, m] of enemyMeshes) {
-      if (!m.userData.seen) {
-        // Shared geometries/materials (see jetGeometries): nothing a
-        // jet owns is per-jet GPU state, so removal needs no .dispose().
-        scene.remove(m); enemyMeshes.delete(id);
-      } else m.userData.seen = false;
+      if (!seen.has(id)) { scene.remove(m); enemyMeshes.delete(id); }
     }
 
     // Rings: pulse + hide once passed.
-    for (let i = 0; i < world.rings.length; i++) {
-      const r = world.rings[i];
+    world.rings.forEach((r, i) => {
       rings[i].visible = !r.passed;
       const s = 1 + Math.sin(time * 2.2 + i) * 0.06;
       rings[i].scale.setScalar(s);
       rings[i].material.opacity = 0.65 + Math.sin(time * 2.2 + i) * 0.25;
-    }
+    });
 
     // Tracers.
     let ti = 0;
@@ -547,7 +474,7 @@ export function createScene(container, qualityName) {
       const o = ti * 6;
       tracerPos[o] = b.x; tracerPos[o + 1] = b.y; tracerPos[o + 2] = b.z;
       tracerPos[o + 3] = b.x - b.vx * 0.035; tracerPos[o + 4] = b.y - b.vy * 0.035; tracerPos[o + 5] = b.z - b.vz * 0.035;
-      const c = b.from === 'player' ? TRACER_PLAYER : TRACER_ENEMY; // x1.8 material: both pass the bloom threshold
+      const c = b.from === 'player' ? [1, 0.85, 0.3] : [1.3, 0.35, 0.28]; // x1.8 material: both pass the bloom threshold
       tracerCol[o] = c[0]; tracerCol[o + 1] = c[1]; tracerCol[o + 2] = c[2];
       tracerCol[o + 3] = c[0]; tracerCol[o + 4] = c[1]; tracerCol[o + 5] = c[2];
       ti++;
@@ -563,20 +490,17 @@ export function createScene(container, qualityName) {
     // Missiles.
     missileMeshes.forEach((mm, i) => {
       const m = world.missiles[i];
-      if (!m) { mm.group.visible = false; mm.trailCount = 0; mm.trailHead = 0; return; }
+      if (!m) { mm.group.visible = false; mm.history = []; return; }
       mm.group.visible = true;
       mm.group.position.set(m.x, m.y, m.z);
       const sp = Math.hypot(m.vx, m.vy, m.vz) || 1;
       mm.group.lookAt(m.x + m.vx / sp, m.y + m.vy / sp, m.z + m.vz / sp);
-      let wi;
-      if (mm.trailCount < TRAIL_POINTS) { wi = (mm.trailHead + mm.trailCount) % TRAIL_POINTS; mm.trailCount++; }
-      else { wi = mm.trailHead; mm.trailHead = (mm.trailHead + 1) % TRAIL_POINTS; }
-      mm.trailPos[wi * 3] = m.x; mm.trailPos[wi * 3 + 1] = m.y; mm.trailPos[wi * 3 + 2] = m.z;
+      mm.history.push([m.x, m.y, m.z]);
+      if (mm.history.length > TRAIL_POINTS) mm.history.shift();
       const posAttr = mm.trail.geometry.attributes.position;
       for (let j = 0; j < TRAIL_POINTS; j++) {
-        const k = Math.min(j, mm.trailCount - 1);
-        const idx = (mm.trailHead + k) % TRAIL_POINTS;
-        posAttr.setXYZ(j, mm.trailPos[idx * 3], mm.trailPos[idx * 3 + 1], mm.trailPos[idx * 3 + 2]);
+        const h = mm.history[Math.min(j, mm.history.length - 1)] || [m.x, m.y, m.z];
+        posAttr.setXYZ(j, h[0], h[1], h[2]);
       }
       posAttr.needsUpdate = true;
     });

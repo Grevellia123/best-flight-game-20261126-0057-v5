@@ -5,19 +5,6 @@ import { mulberry32, fbm2, clamp, lerp, angleDiff, angleLerp } from './random.js
 
 const SEED = 20261127;
 
-// v5.12 perf — object pooling & zero loop allocation. The sim used to
-// allocate a fresh {x,y,z} every time noseDir ran, every missile
-// steering step, and every enemy step, plus a fresh array from
-// enemies.filter() every frame. These scratch vectors are written and
-// read synchronously inside one call and never stored, so sharing them
-// is safe. Bullets, missiles and enemies are pooled in free lists on
-// the world object (w._bulletFree / _missileFree / _enemyFree): spawn
-// pops one (or creates it the first time), death pushes it back.
-const _nose = { x: 0, y: 0, z: 0 };
-const _mWant = { x: 0, y: 0, z: 0 };
-const _mCur = { x: 0, y: 0, z: 0 };
-const _ed = { x: 0, y: 0, z: 0 };
-
 // ---- terrain ---------------------------------------------------------------
 export function riverZ(x) {
   return 900 + 1200 * Math.sin(x / 2200 + 1.3);
@@ -65,9 +52,6 @@ export function createWorld() {
     enemies: [],
     bullets: [],
     missiles: [],
-    _bulletFree: [], // pooled bullet objects (see spawnBullet)
-    _missileFree: [], // pooled missile objects
-    _enemyFree: [], // pooled enemy objects (shells reused by spawnEnemy)
     rings: CFG.rings.map((r) => ({ ...r, passed: false })),
     score: 0,
     kills: 0,
@@ -133,24 +117,21 @@ function spawnEnemy(w, waveDef, isAce, idx) {
   const x = px + Math.sin(a) * dist;
   const z = pz - Math.abs(Math.cos(a)) * dist - 400;
   const y = clamp(320 + rng() * 520, 260, 900);
-  // Reuse a pooled shell when one is free; every field is overwritten
-  // below, so no stale state survives. The id is always fresh — the
-  // renderer keys enemy meshes by id, so a reused id would collide
-  // with the mesh of the bandit that just died.
-  const e = w._enemyFree.pop() || {};
-  e.id = ++enemySeq;
-  e.name = name; e.ace = isAce;
-  e.x = x; e.y = y; e.z = z;
-  e.yaw = Math.atan2(x - px, z - pz); // face the player: nose = (-sin yaw, -cos yaw)
-  e.pitch = 0; e.roll = 0;
-  e.speed = CFG.enemy.speedMin + rng() * (CFG.enemy.speedMax - CFG.enemy.speedMin);
-  e.hp = isAce ? CFG.enemy.aceHp : CFG.enemy.hp;
-  e.mode = 'hunt';
-  e.modeT = 0;
-  e.fireCd = 1 + rng() * 1.5;
-  e.burstLeft = 0; e.burstT = 0;
-  e.evadeT = 0;
-  e.dead = false;
+  const e = {
+    id: ++enemySeq,
+    name, ace: isAce,
+    x, y, z,
+    yaw: Math.atan2(x - px, z - pz), // face the player: nose = (-sin yaw, -cos yaw)
+    pitch: 0, roll: 0,
+    speed: CFG.enemy.speedMin + rng() * (CFG.enemy.speedMax - CFG.enemy.speedMin),
+    hp: isAce ? CFG.enemy.aceHp : CFG.enemy.hp,
+    mode: 'hunt',
+    modeT: 0,
+    fireCd: 1 + rng() * 1.5,
+    burstLeft: 0, burstT: 0,
+    evadeT: 0,
+    dead: false,
+  };
   w.enemies.push(e);
   return e;
 }
@@ -166,24 +147,13 @@ function startWave(w, n) {
 }
 
 // ---- combat ----------------------------------------------------------------
-function noseDir(p, out = _nose) {
-  // Forward vector from yaw/pitch. yaw=PI faces -z. Writes into the
-  // shared scratch vector (see the note at the top of this file).
-  out.x = -Math.sin(p.yaw) * Math.cos(p.pitch);
-  out.y = Math.sin(p.pitch);
-  out.z = -Math.cos(p.yaw) * Math.cos(p.pitch);
-  return out;
-}
-
-// Pooled bullet spawn: pops a dead bullet's object (or creates one the
-// first time), overwrites every field, and pushes it to the live list.
-// Death pushes the object back to the pool (see the bullet loop below).
-function spawnBullet(w, x, y, z, vx, vy, vz, life, from, damage) {
-  const b = w._bulletFree.pop() || {};
-  b.x = x; b.y = y; b.z = z;
-  b.vx = vx; b.vy = vy; b.vz = vz;
-  b.life = life; b.from = from; b.damage = damage;
-  w.bullets.push(b);
+function noseDir(p) {
+  // Forward vector from yaw/pitch. yaw=PI faces -z.
+  return {
+    x: -Math.sin(p.yaw) * Math.cos(p.pitch),
+    y: Math.sin(p.pitch),
+    z: -Math.cos(p.yaw) * Math.cos(p.pitch),
+  };
 }
 
 function fireGuns(w) {
@@ -191,13 +161,14 @@ function fireGuns(w) {
   const d = noseDir(p);
   const spread = 0.011;
   for (let i = 0; i < 2; i++) {
-    spawnBullet(w,
-      p.x + d.x * 14, p.y + d.y * 14, p.z + d.z * 14,
-      d.x * 1200 + (w.rng() - 0.5) * 22 + p.vx * 0.5,
-      d.y * 1200 + (w.rng() - 0.5) * 22 + p.vy * 0.5,
-      d.z * 1200 + (w.rng() - 0.5) * 22 + p.vz * 0.5,
-      CFG.player.gunRange / 1200,
-      'player', CFG.player.gunDamage);
+    w.bullets.push({
+      x: p.x + d.x * 14, y: p.y + d.y * 14, z: p.z + d.z * 14,
+      vx: d.x * 1200 + (w.rng() - 0.5) * 22 + p.vx * 0.5,
+      vy: d.y * 1200 + (w.rng() - 0.5) * 22 + p.vy * 0.5,
+      vz: d.z * 1200 + (w.rng() - 0.5) * 22 + p.vz * 0.5,
+      life: CFG.player.gunRange / 1200,
+      from: 'player', damage: CFG.player.gunDamage,
+    });
   }
   p.heat = Math.min(100, p.heat + CFG.player.gunHeatPerShot);
   if (p.heat >= 100) p.overheated = true;
@@ -217,11 +188,11 @@ function fireMissile(w) {
   if (!t || p.missiles <= 0) return;
   p.missiles--;
   const d = noseDir(p);
-  const m = w._missileFree.pop() || {};
-  m.x = p.x + d.x * 12; m.y = p.y - 2; m.z = p.z + d.z * 12;
-  m.vx = d.x * 220 + p.vx; m.vy = d.y * 220 + p.vy; m.vz = d.z * 220 + p.vz;
-  m.target = t; m.life = 7; m.from = 'player';
-  w.missiles.push(m);
+  w.missiles.push({
+    x: p.x + d.x * 12, y: p.y - 2, z: p.z + d.z * 12,
+    vx: d.x * 220 + p.vx, vy: d.y * 220 + p.vy, vz: d.z * 220 + p.vz,
+    target: t, life: 7, from: 'player',
+  });
   w.lockTarget = null; w.lockProgress = 0;
   // The missile's Doppler follows its target: main.js reads tx/ty/tz,
   // finds that bandit, and passes its radial velocity + pan.
@@ -408,7 +379,7 @@ export function stepWorld(w, input, dt) {
         }
       }
     }
-    if (dead) { w._bulletFree.push(b); w.bullets.splice(i, 1); }
+    if (dead) w.bullets.splice(i, 1);
   }
 
   // --- missiles
@@ -420,10 +391,10 @@ export function stepWorld(w, input, dt) {
       const dx = t.x - m.x, dy = t.y - m.y, dz = t.z - m.z;
       const dist = Math.hypot(dx, dy, dz);
       const sp = Math.hypot(m.vx, m.vy, m.vz) || 1;
-      _mWant.x = dx / dist; _mWant.y = dy / dist; _mWant.z = dz / dist;
-      _mCur.x = m.vx / sp; _mCur.y = m.vy / sp; _mCur.z = m.vz / sp;
+      const want = { x: dx / dist, y: dy / dist, z: dz / dist };
+      const cur = { x: m.vx / sp, y: m.vy / sp, z: m.vz / sp };
       const turn = Math.min(1, 2.4 * dt);
-      const nx = lerp(_mCur.x, _mWant.x, turn), ny = lerp(_mCur.y, _mWant.y, turn), nz = lerp(_mCur.z, _mWant.z, turn);
+      const nx = lerp(cur.x, want.x, turn), ny = lerp(cur.y, want.y, turn), nz = lerp(cur.z, want.z, turn);
       const nl = Math.hypot(nx, ny, nz) || 1;
       const ns = Math.min(CFG.player.missileSpeed, sp + 260 * dt);
       m.vx = nx / nl * ns; m.vy = ny / nl * ns; m.vz = nz / nl * ns;
@@ -438,7 +409,6 @@ export function stepWorld(w, input, dt) {
     m.x += m.vx * dt; m.y += m.vy * dt; m.z += m.vz * dt;
     if (m.life <= 0 || m.y < terrainHeight(m.x, m.z)) {
       if (m.life <= 0 && m.target && !m.target.dead) w.events.push({ type: 'missileMiss', x: m.x, y: m.y, z: m.z });
-      w._missileFree.push(m);
       w.missiles.splice(i, 1);
     }
   }
@@ -487,10 +457,11 @@ export function stepWorld(w, input, dt) {
     const wantRoll = clamp(angleDiff(e.yaw, wantYaw) * -1.4, -1.2, 1.2);
     e.roll = lerp(e.roll, wantRoll, 2 * dt);
     e.speed = clamp(e.speed + (e.mode === 'evade' ? 30 : -10) * dt, CFG.enemy.speedMin, CFG.enemy.speedMax);
-    const ed = _ed;
-    ed.x = -Math.sin(e.yaw) * Math.cos(e.pitch);
-    ed.y = Math.sin(e.pitch);
-    ed.z = -Math.cos(e.yaw) * Math.cos(e.pitch);
+    const ed = {
+      x: -Math.sin(e.yaw) * Math.cos(e.pitch),
+      y: Math.sin(e.pitch),
+      z: -Math.cos(e.yaw) * Math.cos(e.pitch),
+    };
     e.x += ed.x * e.speed * dt;
     e.y = clamp(e.y + ed.y * e.speed * dt, 120, 1100);
     e.z += ed.z * e.speed * dt;
@@ -509,18 +480,19 @@ export function stepWorld(w, input, dt) {
         const ax = (p.x + p.vx * leadT - e.x) / dist + (w.rng() - 0.5) * 0.22;
         const ay = (p.y + p.vy * leadT - e.y) / dist + (w.rng() - 0.5) * 0.22;
         const az = (p.z + p.vz * leadT - e.z) / dist + (w.rng() - 0.5) * 0.22;
-        spawnBullet(w,
-          e.x + ax * 12, e.y + ay * 12, e.z + az * 12,
-          ax * 700, ay * 700, az * 700,
-          1.4, 'enemy', CFG.enemy.bulletDamage);
+        w.bullets.push({
+          x: e.x + ax * 12, y: e.y + ay * 12, z: e.z + az * 12,
+          vx: ax * 700, vy: ay * 700, vz: az * 700,
+          life: 1.4, from: 'enemy', damage: CFG.enemy.bulletDamage,
+        });
         w.events.push({ type: 'enemyGun', x: e.x, y: e.y, z: e.z });
       }
     } else if (e.fireCd <= 0 && e.mode === 'hunt') {
       const pdx = p.x - e.x, pdy = p.y - e.y, pdz = p.z - e.z;
       const dist = Math.hypot(pdx, pdy, pdz);
       if (dist < CFG.enemy.fireRange) {
-        const fwdX = -Math.sin(e.yaw), fwdZ = -Math.cos(e.yaw);
-        const dot = (pdx * fwdX + pdz * fwdZ) / (dist || 1);
+        const fwd = { x: -Math.sin(e.yaw), y: 0, z: -Math.cos(e.yaw) };
+        const dot = (pdx * fwd.x + pdz * fwd.z) / (dist || 1);
         if (dot > Math.cos(CFG.enemy.fireAngle)) {
           e.burstLeft = CFG.enemy.burstShots;
           e.burstT = 0;
@@ -530,17 +502,7 @@ export function stepWorld(w, input, dt) {
       if (e.fireCd <= 0) e.fireCd = 0.5;
     }
   }
-  // In-place compaction (v5.12): the old enemies.filter() allocated a
-  // fresh array every frame. Dead enemies go back to the pool for the
-  // next wave; order is preserved, so the renderer keeps the same
-  // enemy-to-mesh mapping.
-  let n = 0;
-  for (let i = 0; i < w.enemies.length; i++) {
-    const e = w.enemies[i];
-    if (e.dead) { w._enemyFree.push(e); continue; }
-    w.enemies[n++] = e;
-  }
-  w.enemies.length = n;
+  w.enemies = w.enemies.filter((e) => !e.dead);
 }
 
 // ---- autopilot (verification + demo): flies, shoots, locks, wins --------------

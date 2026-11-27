@@ -1,5 +1,15 @@
 # TALON STRIKE — Changelog
 
+## v5.13 — 27 November 2026
+
+### Reverted v5.12
+- The v5.12 performance pass (object pooling, shared jet geometry,
+  compass offscreen cache) and the smaller reticle are revoked at
+  the user's request. The game is back to v5.11's code exactly:
+  per-spawn jet geometries are back, the compass draws its ticks
+  and labels every frame again, and the aim reticle is back to its
+  20 px ring. No gameplay change either way.
+
 ## v5.12 — 27 November 2026
 
 ### Performance pass (try it — revert if it's bad) + smaller reticle
