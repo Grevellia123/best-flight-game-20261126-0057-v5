@@ -364,6 +364,44 @@ export function createScene(container, qualityName, aaSetting = 'auto', jetModel
   stars.visible = false;
   scene.add(stars);
 
+  // Aurora borealis for night mode: two translucent curtains high in the
+  // northern sky, visible only at night, slowly rippling. They follow the
+  // player like the sky dome and stars so they never fly out of view.
+  const auroraGroup = new THREE.Group();
+  auroraGroup.name = 'aurora';
+  auroraGroup.visible = false;
+  {
+    const mkCurtain = (w, h, off, rotY) => {
+      const mat = new THREE.ShaderMaterial({
+        transparent: true, depthWrite: false, side: THREE.DoubleSide,
+        blending: THREE.AdditiveBlending, fog: false,
+        uniforms: { uTime: { value: 0 } },
+        vertexShader: `uniform float uTime; varying vec2 vUv;
+          void main() { vUv = uv; vec3 p = position;
+            p.y += sin(uv.x * 9.0 + uTime * 0.35) * 90.0;
+            p.z += sin(uv.x * 5.0 - uTime * 0.22) * 160.0;
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(p, 1.0); }`,
+        fragmentShader: `uniform float uTime; varying vec2 vUv;
+          void main() {
+            float rays = 0.5 + 0.5 * sin(vUv.x * 40.0 + sin(vUv.x * 7.0 + uTime * 0.4) * 2.0);
+            float vert = smoothstep(0.0, 0.15, vUv.y) * (1.0 - smoothstep(0.15, 1.0, vUv.y));
+            float a = vert * (0.25 + 0.55 * rays) * 0.55;
+            vec3 col = mix(vec3(0.25, 0.95, 0.45), vec3(0.15, 0.75, 0.8), smoothstep(0.2, 0.9, vUv.y));
+            gl_FragColor = vec4(col, a); }`,
+      });
+      const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h, 96, 1), mat);
+      m.position.set(off[0], off[1], off[2]);
+      m.rotation.y = rotY;
+      m.userData.base = off;
+      m.userData.mat = mat;
+      auroraGroup.add(m);
+      return m;
+    };
+    mkCurtain(7000, 1100, [0, 2800, -4200], 0);
+    mkCurtain(6000, 900, [3400, 3200, -2600], 0.9);
+  }
+  scene.add(auroraGroup);
+
   // Terrain + water. Terrain is tiled (see buildTerrainTiles) so
   // off-screen tiles can be culled instead of drawing the whole world.
   const terrainTiles = buildTerrainTiles(7);
@@ -510,7 +548,7 @@ export function createScene(container, qualityName, aaSetting = 'auto', jetModel
   const handle = {
     renderer, scene, camera, container,
     playerJet, enemyMeshes, enemyMesh, rings, clouds, sunSprite, lockRing,
-    terrainTiles, cullStats: null,
+    terrainTiles, cullStats: null, aurora: auroraGroup,
     triggerExplosion,
     camPos: new THREE.Vector3(0, 560, 980),
     camLook: new THREE.Vector3(0, 520, 0),
@@ -571,6 +609,7 @@ export function createScene(container, qualityName, aaSetting = 'auto', jetModel
     sunSprite.material.opacity = m.moonOpacity;
     clouds.forEach((c) => { c.material.opacity = c.userData.baseOpacity * m.cloudOpacity; c.material.color.setHex(m.cloudColor); });
     stars.visible = on;
+    auroraGroup.visible = on;
   };
 
   // Swap the player's jet live (title-screen JET button) — no reload.
@@ -738,6 +777,11 @@ export function createScene(container, qualityName, aaSetting = 'auto', jetModel
     sunSprite.position.set(p.x + sunDir.x * 8800, p.y + sunDir.y * 8800, p.z + sunDir.z * 8800);
     sky.position.set(p.x, 0, p.z);
     stars.position.set(p.x, 0, p.z);
+    // Aurora follows the player (same trick as the sky and stars) and ripples.
+    for (const m of auroraGroup.children) {
+      m.position.set(p.x + m.userData.base[0], m.userData.base[1], p.z + m.userData.base[2]);
+      m.userData.mat.uniforms.uTime.value = time;
+    }
 
     // Camera.
     const nose = {
@@ -821,6 +865,14 @@ export function createScene(container, qualityName, aaSetting = 'auto', jetModel
     const sunUV = { x: _ndc.x * 0.5 + 0.5, y: _ndc.y * 0.5 + 0.5 };
     const off = Math.max(Math.abs(sunUV.x - 0.5), Math.abs(sunUV.y - 0.5)) * 2;
     const sunVis = sstep(0.05, 0.35, facing) * (1 - sstep(0.7, 1.25, off));
+    // Sun glare: how hard the camera faces the sun, for the DOM glare
+    // overlay (main.js applies it). Only in flight, only by day — the
+    // moon gets no glare. Fades out as the sun leaves the frame. The
+    // wash is the DEVICE screen glaring, not the plane lighting up.
+    const glare = world.screen === 'play' && !handle.night
+      ? sstep(0.75, 0.95, facing) * (1 - sstep(0.7, 1.25, off))
+      : 0;
+    handle.glare = { x: sunUV.x, y: sunUV.y, s: glare };
     // ---- Frustum culling: do not render what the camera cannot see ----
     // Three.js already culls single meshes, but whole objects were still
     // drawn when off-screen: the terrain used to be one mesh (fixed by

@@ -96,9 +96,18 @@
     text-shadow: 0 0 12px rgba(255, 80, 64, 0.8); transition: opacity 0.2s; opacity: 0;
   }
   #lock-text {
-    position: absolute; left: 50%; top: calc(50% + 34px); transform: translateX(-50%);
+    position: absolute; left: 50%; top: calc(50% + 110px); transform: translateX(-50%);
     font-size: 13px; font-weight: 700; letter-spacing: 0.12em; color: var(--accent);
     text-shadow: 0 1px 6px rgba(0,0,0,0.8);
+  }
+  /* Sun glare: a warm wash that follows the sun across the screen when
+     the camera faces it. Above the 3D canvas (z 0), below the HUD (z 5),
+     so the instruments stay readable through it. */
+  #sun-glare {
+    position: fixed; inset: 0; z-index: 3; pointer-events: none; opacity: 0;
+    background: radial-gradient(circle at var(--gx, 50%) var(--gy, 50%),
+      rgba(255, 250, 235, 1) 0%, rgba(255, 226, 160, 0.8) 20%,
+      rgba(255, 200, 120, 0.5) 50%, rgba(255, 190, 110, 0.32) 100%);
   }
   .hud-btn {
     pointer-events: auto; cursor: pointer;
@@ -558,6 +567,7 @@
 </head>
 <body>
 <div id="game"></div>
+<div id="sun-glare"></div>
 <div id="cockpit-frame">
   <svg class="arch" viewBox="0 0 1920 880" preserveAspectRatio="none" aria-hidden="true">
     <path d="M -40 880 L -40 430 Q 960 -140 1960 430 L 1960 880" fill="none" stroke="#0a1218" stroke-width="36"/>

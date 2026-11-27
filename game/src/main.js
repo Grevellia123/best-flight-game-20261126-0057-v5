@@ -132,6 +132,7 @@ const els = {
   hullBar: $('hull-bar'), hullText: $('hull-text'),
   heatBar: $('heat-bar'), heatText: $('heat-text'),
   mslText: $('msl-text'), stallWarn: $('stall-warn'), lockText: $('lock-text'),
+  sunGlare: $('sun-glare'),
   btnFire: $('btn-fire'), btnMsl: $('btn-msl'),
   btnCam: $('btn-cam'), btnPause: $('btn-pause'), btnMute: $('btn-mute'),
   // Cockpit overlay (inside #cockpit-frame): objective line, HUD ring
@@ -796,6 +797,14 @@ function frame(now) {
   updateEnemyDoppler();
   drainEvents();
   scene.sync(world, dt, settings.camMode, world.time);
+  // Sun glare: the overlay follows the sun's screen position and fades in
+  // as the camera turns to face it (render3d exposes scene.glare).
+  const gl = scene.glare;
+  if (gl && els.sunGlare) {
+    els.sunGlare.style.setProperty('--gx', `${(gl.x * 100).toFixed(1)}%`);
+    els.sunGlare.style.setProperty('--gy', `${((1 - gl.y) * 100).toFixed(1)}%`);
+    els.sunGlare.style.opacity = (gl.s * 0.85).toFixed(3);
+  }
   if (world.screen === 'play' || SHOT === 'combat' || SHOT === 'lock') {
     drawHud(els, world, {
       project: (x, y, z) => scene.project(x, y, z),

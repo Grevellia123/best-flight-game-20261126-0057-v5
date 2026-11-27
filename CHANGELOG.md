@@ -1,5 +1,12 @@
 # TALON STRIKE — Changelog
 
+## v5.34 — 28 November 2026
+
+### Sun glare, lower lock text, and aurora in night mode
+- Facing the sun now washes the screen with a warm glare that follows the sun and fades as you turn away — by day, in flight. The instruments stay readable through it.
+- The "◉ LOCK — FIRE!" text moved further down, clear of the jet and the stall warning.
+- Night mode has an aurora: green curtains rippling high in the northern sky.
+
 ## v5.33 — 28 November 2026
 
 ### Auto landscape — one tap rotates the phone
