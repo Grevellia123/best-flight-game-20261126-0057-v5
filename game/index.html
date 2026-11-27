@@ -141,8 +141,14 @@
   .screen {
     position: fixed; inset: 0; z-index: 10; display: none;
     flex-direction: column; align-items: center; justify-content: center;
+    justify-content: safe center;
     text-align: center; padding: 24px; gap: 14px;
     background: radial-gradient(ellipse at 50% 30%, rgba(10, 26, 40, 0.55) 0%, rgba(5, 10, 16, 0.82) 100%);
+    /* Short screens (phone landscape): the title column is taller than the
+       viewport, so let the screen scroll instead of clipping the title at
+       the top with no way to reach it. safe center keeps the top reachable
+       when the column overflows; plain center would clip it. */
+    overflow-y: auto; -webkit-overflow-scrolling: touch;
   }
   .kicker { font-size: 12px; letter-spacing: 0.42em; color: var(--gold); font-weight: 700; }
   h1.title { font-size: clamp(44px, 9vw, 92px); line-height: 0.95; letter-spacing: 0.04em; color: #eaf7ff; text-shadow: 0 0 32px rgba(127, 212, 255, 0.45); }
@@ -196,21 +202,54 @@
      piece gets its own zone: top strip | docked tapes left/right |
      THR buttons below the IAS tape | bars bottom-centre | FIRE/MSL
      mid-right, left of the ALT tape | radar bottom-right. */
-  @media (pointer: coarse) and (max-height: 780px) {
+  /* Short screens also match without pointer: coarse, so the compact
+     layout still applies if a phone ever reports a fine pointer.
+     Desktop 1280x720 is unaffected (720px tall matches neither branch). */
+  @media (pointer: coarse) and (max-height: 780px), (max-height: 500px) {
     #wave-info { font-size: 12px; padding: 6px 10px; }
     #compass { height: 44px; }
     .hud-btn { min-height: 40px; padding: 6px 10px; }
     #wave-sub { left: calc(84px + env(safe-area-inset-left, 0px)); top: calc(56px + env(safe-area-inset-top, 0px)); }
     #killfeed { left: calc(84px + env(safe-area-inset-left, 0px)); top: calc(84px + env(safe-area-inset-top, 0px)); max-height: 40px; overflow: hidden; }
-    #msg { top: calc(128px + env(safe-area-inset-top, 0px)); font-size: 12px; }
-    #ias-tape, #alt-tape { top: calc(92px + env(safe-area-inset-top, 0px)); transform: none; height: calc(100vh - 210px); min-height: 96px; }
-    #bars { left: 50%; transform: translateX(-50%); bottom: calc(12px + env(safe-area-inset-bottom, 0px)); width: 250px; }
+    /* Wave banner: narrow pill in the top zone, clear of the centre reticle
+       and of enemies flying through the middle — it used to span 92vw and
+       cover the lock indicator, distance text and the bandit behind it. */
+    #msg { top: calc(128px + env(safe-area-inset-top, 0px)); font-size: 11px; padding: 5px 12px; max-width: 60vw; background: rgba(8, 18, 26, 0.55); }
+    /* dvh, not vh: on Chrome Android 100vh is the large viewport (URL bar
+       hidden) while the bottom-anchored buttons use the visible viewport,
+       so a vh-sized tape grew ~40px too tall and ran over the THR buttons
+       and the radar whenever the URL bar was showing. */
+    #ias-tape, #alt-tape { top: calc(92px + env(safe-area-inset-top, 0px)); transform: none; height: calc(100vh - 210px); height: calc(100dvh - 210px); min-height: 96px; }
+    #bars { left: 50%; transform: translateX(-50%); bottom: calc(12px + env(safe-area-inset-bottom, 0px)); width: 200px; padding: 8px 10px; font-size: 10px; }
+    #bars .bar-row label { width: 72px; }
+    #bars .bar-row .val { width: 60px; }
+    #bars .bar { height: 7px; }
     #radar { width: 96px; height: 96px; }
     #btn-thr-up { left: calc(18px + env(safe-area-inset-left, 0px)); bottom: calc(60px + env(safe-area-inset-bottom, 0px)); width: 48px; height: 48px; min-width: 48px; min-height: 48px; }
     #btn-thr-dn { left: calc(18px + env(safe-area-inset-left, 0px)); bottom: calc(6px + env(safe-area-inset-bottom, 0px)); width: 48px; height: 48px; min-width: 48px; min-height: 48px; }
-    #btn-fire { right: calc(88px + env(safe-area-inset-right, 0px)); bottom: calc(118px + env(safe-area-inset-bottom, 0px)); width: 72px; height: 72px; }
-    #btn-msl { right: calc(168px + env(safe-area-inset-right, 0px)); bottom: calc(126px + env(safe-area-inset-bottom, 0px)); width: 56px; height: 56px; min-width: 56px; min-height: 56px; }
+    #btn-fire { right: calc(96px + env(safe-area-inset-right, 0px)); bottom: calc(118px + env(safe-area-inset-bottom, 0px)); width: 72px; height: 72px; }
+    #btn-msl { right: calc(176px + env(safe-area-inset-right, 0px)); bottom: calc(126px + env(safe-area-inset-bottom, 0px)); width: 56px; height: 56px; min-width: 56px; min-height: 56px; }
     .touch-hint { display: none; }
+  }
+
+  /* ---------- Short screens: title / end / pause screens ----------
+     On phone landscape the title column (~460px) is taller than the
+     viewport (~360-412px), so the heading clipped at the top and the
+     footer cut off at the bottom. Shrink everything with vh-based type
+     so the whole screen fits; the scrollable .screen above is the
+     backstop for the narrowest widths where the wave chips wrap. */
+  @media (max-height: 500px) {
+    .screen { padding: 10px 16px; gap: 8px; }
+    .kicker { font-size: 10px; letter-spacing: 0.3em; }
+    h1.title { font-size: clamp(30px, 11vh, 54px); }
+    .subtitle { font-size: 11px; letter-spacing: 0.12em; }
+    .wave-chip { padding: 4px 8px; font-size: 10px; }
+    .big-btn { padding: 12px 32px; min-height: 48px; font-size: 16px; margin-top: 0; }
+    .controls { font-size: 10px; line-height: 1.6; }
+    .set-btn { padding: 8px 12px; min-height: 40px; }
+    .end-title { font-size: clamp(26px, 9vh, 44px); }
+    .stat { padding: 6px 10px; font-size: 11px; }
+    .debrief { gap: 6px 20px; }
   }
 
   /* Very narrow portrait: the top strip wraps so the compass drops to its
