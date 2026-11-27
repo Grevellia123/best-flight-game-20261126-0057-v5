@@ -196,12 +196,13 @@ function toggleMute() {
   updateMuteUI();
 }
 
-// Mute controls show the setting: ON by default, MUTED only when the
-// user muted it. (They used to show SOUND OFF / 🔇 while the context
-// was merely waiting for its first tap, which read as "sound is off".)
+// Mute controls show the setting as a SOUND ON / SOUND OFF pair: ON by
+// default, OFF only when the user muted it. (They used to show SOUND OFF
+// / 🔇 while the context was merely waiting for its first tap, which
+// read as "sound is off" — and the muted state used to read MUTED.)
 function updateMuteUI() {
   $('btn-mute').textContent = settings.muted ? '🔇' : '🔊';
-  $('mute-setting').textContent = settings.muted ? 'MUTED' : 'SOUND ON';
+  $('mute-setting').textContent = settings.muted ? 'SOUND OFF' : 'SOUND ON';
 }
 
 // ---- Doppler (enemy sources relative to the player) -------------------------

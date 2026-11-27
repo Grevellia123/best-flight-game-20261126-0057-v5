@@ -11,6 +11,8 @@
   which never resumed the audio — so the music only started when you hit
   FLY. The unlock now retries on every tap, click, or keypress until the
   music is actually playing.
+- When muted, the same button reads SOUND OFF — not MUTED — so the pair is
+  SOUND ON / SOUND OFF.
 
 ### Stereo Doppler
 - Doppler is no longer just pitch — it's directional. A bandit passing on
