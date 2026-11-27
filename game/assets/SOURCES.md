@@ -42,3 +42,24 @@ They are loaded by `game/src/audio.js` (wiring done separately by the main agent
 - Caveat: the file is mono and carries an embedded ID3 cover image (a PNG stream);
   both decode fine in browsers, but if the game's decoder is strict, strip the image
   (`ffmpeg -i missile.mp3 -map 0:a -c copy missile-clean.mp3`) and/or upmix to stereo.
+
+## 4. jet-flyby.mp3 — enemy jet close-pass whoosh
+- File: MP3, 44.1 kHz stereo, 192 kbps, 3.4 s, 83,426 bytes
+- Source: "Efek Suara Jet Tempur" (Fighter Jet Sound Effect), YouTube video
+  https://youtu.be/_F9InUdTAqY (direct video: https://www.youtube.com/watch?v=_F9InUdTAqY),
+  downloaded with yt-dlp (Android player client — the default client was
+  refused with a "sign in to confirm you're not a bot" check; format 18,
+  360p mp4, was the only format the Android client offered).
+- License: no explicit license is stated on the video; it is a sound-effect
+  clip the user asked for by link ("use the jet flyby sound from this
+  video"). Used here as a game SFX per the user's request.
+- Processing: the 8.4 s video holds TWO flyby passes (peaks ~1.5 s and
+  ~5.5 s). This file is the second pass, trimmed 4.6–8.0 s, 50 ms fades
+  in/out, loudness-normalized (I=-16, TP=-1.5). Shape check: starts quiet
+  (first 0.15 s mean −44.4 dB), peaks mid-pass (max −8.4 dB), ends quiet
+  (last 0.15 s mean −40.3 dB) — a clean approach–pass–recede whoosh.
+- Wiring: `game/src/audio.js` `flyby()` plays it when an enemy jet sweeps
+  past the player (main.js detects the closing-to-receding crossing under
+  500 m), one voice at a time with a 2.5 s cooldown, pitch starting at the
+  approach Doppler and falling to 0.85x through the pass. Synth falling
+  whoosh is the fallback if the file fails to load.

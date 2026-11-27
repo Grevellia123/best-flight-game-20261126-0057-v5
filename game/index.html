@@ -170,6 +170,23 @@
   .controls { font-size: 11px; line-height: 1.9; color: var(--hud-dim); letter-spacing: 0.04em; max-width: 560px; }
   .controls b { color: var(--hud); }
   .settings-row { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
+  /* Settings panel (title screen): Sound sliders + mute, Resolution
+     Low/Medium/High. One panel, stacked sections, so nothing overlaps
+     on portrait or landscape phones — the screen scrolls if it overflows. */
+  .settings-panel {
+    width: 100%; max-width: 520px;
+    background: var(--panel); border: 1px solid var(--panel-line); border-radius: 8px;
+    padding: 12px 16px 14px; display: flex; flex-direction: column; gap: 12px; text-align: left;
+  }
+  .settings-title { font-size: 11px; letter-spacing: 0.42em; color: var(--gold); font-weight: 700; text-align: center; }
+  .settings-section { display: flex; flex-direction: column; gap: 8px; }
+  .settings-label { font-size: 11px; letter-spacing: 0.2em; color: var(--hud-dim); font-weight: 700; }
+  .slider-row { display: flex; align-items: center; gap: 10px; }
+  .slider-row label { width: 52px; flex: 0 0 auto; font-size: 11px; letter-spacing: 0.08em; color: var(--hud); }
+  .slider-row input[type="range"] { flex: 1; min-width: 0; accent-color: #ffb020; height: 24px; }
+  .slider-val { width: 42px; flex: 0 0 auto; text-align: right; font-size: 11px; color: var(--hud); }
+  .settings-note { font-size: 10px; letter-spacing: 0.04em; color: var(--hud-dim); line-height: 1.5; }
+  .q-btn.active { background: rgba(255, 176, 32, 0.22); border-color: var(--gold); color: #ffe9b0; }
   .set-btn {
     pointer-events: auto; cursor: pointer; font: 700 11px ui-monospace, monospace; letter-spacing: 0.08em;
     color: var(--hud); background: var(--panel); border: 1px solid var(--panel-line); border-radius: 6px;
@@ -332,10 +349,34 @@
     <b>MISSILE</b> F — hold the bandit in the reticle to lock &nbsp;·&nbsp; <b>CAMERA</b> C &nbsp;·&nbsp; <b>PAUSE</b> P<br>
     Fly through gold rings for +50 CR · Watch fuel and hull · Clear all 5 waves to win
   </div>
-  <div class="settings-row">
-    <button class="set-btn" id="quality-setting">QUALITY: HIGH</button>
-    <button class="set-btn" id="cam-setting">CAMERA: CHASE</button>
-    <button class="set-btn" id="mute-setting">SOUND ON</button>
+  <div class="settings-panel">
+    <div class="settings-title">SETTINGS</div>
+    <div class="settings-section">
+      <div class="settings-label">SOUND</div>
+      <div class="slider-row">
+        <label for="music-vol">MUSIC</label>
+        <input type="range" id="music-vol" min="0" max="100" step="1" value="100" aria-label="Music volume">
+        <span class="slider-val" id="music-vol-val">100%</span>
+      </div>
+      <div class="slider-row">
+        <label for="sfx-vol">SFX</label>
+        <input type="range" id="sfx-vol" min="0" max="100" step="1" value="100" aria-label="Sound effects volume">
+        <span class="slider-val" id="sfx-vol-val">100%</span>
+      </div>
+      <div class="settings-row">
+        <button class="set-btn" id="mute-setting">SOUND OFF</button>
+        <button class="set-btn" id="cam-setting">CAMERA: CHASE</button>
+      </div>
+    </div>
+    <div class="settings-section">
+      <div class="settings-label">RESOLUTION</div>
+      <div class="settings-row" id="quality-group">
+        <button class="set-btn q-btn" data-q="low">LOW</button>
+        <button class="set-btn q-btn" data-q="medium">MEDIUM</button>
+        <button class="set-btn q-btn" data-q="high">HIGH</button>
+      </div>
+      <div class="settings-note" id="quality-note"></div>
+    </div>
   </div>
 </div>
 

@@ -38,6 +38,8 @@ const settings = {
   quality: saved.quality || (lowEnd ? 'low' : (isTouch ? 'medium' : 'high')),
   camMode: saved.camMode || 'chase',
   muted: saved.muted === true,
+  musicVol: typeof saved.musicVol === 'number' ? saved.musicVol : 1,
+  sfxVol: typeof saved.sfxVol === 'number' ? saved.sfxVol : 1,
 };
 // A saved High from an earlier session is capped to Medium on low-end
 // hardware — starting on High there is exactly the jerk the user reported.
@@ -53,10 +55,43 @@ if (settings.muted) audio.setMuted(true);
 // MP3/SFX downloads start immediately, so the track is usually decoded
 // by the time the user taps. No sound plays until a gesture resumes it.
 audio.prime();
+audio.setMusicVolume(settings.musicVol);
+audio.setSfxVolume(settings.sfxVol);
+// The mute icon follows real audibility, not just the muted flag: a
+// suspended context is silent even when unmuted, so the icon starts
+// muted and flips to sound-on the moment the context actually runs.
+audio.onStateChange(updateMuteUI);
 // First tap / keypress anywhere unlocks audio — including taps on the
 // lobby, so the background music starts on the title screen instead of
 // only when the sortie begins. unlock() is idempotent.
-const unlockAudio = () => audio.unlock();
+// One exception: a tap ON a mute control does NOT unlock here. Its click
+// handler owns the unlock, so the same tap can't both unlock the audio
+// and toggle mute — that double action from one tap was the "press twice
+// to turn sound on" bug (pointerdown resumed the context, then the click
+// saw an audible context and muted it). The listener stays live until
+// an unlock actually happens, so a first tap on mute never consumes it.
+// First tap / keypress anywhere unlocks audio — including taps on the
+// lobby, so the background music starts on the title screen instead of
+// only when the sortie begins. unlock() is idempotent.
+// If that very first gesture lands on a mute control (or is KeyM),
+// remember it: the gesture's click must turn sound ON, not toggle it
+// off. (Chrome auto-resumes the AudioContext on the tap's pointerdown,
+// so by click time the context is already running and a blind toggle
+// would mute — that was the "press twice to turn sound on" bug. No
+// timing window can fix it reliably — on a slow device the
+// pointerdown-to-click gap alone exceeds half a second — so the
+// decision is recorded at the gesture itself, not at click time.)
+let seenGesture = false, firstMuteGesture = false;
+const unlockAudio = (e) => {
+  if (!seenGesture) {
+    seenGesture = true;
+    const onMute = (e && e.target && e.target.closest
+        && e.target.closest('#btn-mute, #mute-setting'))
+      || (e && e.code === 'KeyM');
+    if (onMute) firstMuteGesture = true;
+  }
+  audio.unlock();
+};
 window.addEventListener('pointerdown', unlockAudio, { once: true });
 window.addEventListener('keydown', unlockAudio, { once: true });
 
@@ -145,11 +180,81 @@ function toggleCam() {
 }
 
 function toggleMute() {
-  settings.muted = !settings.muted;
-  audio.setMuted(settings.muted);
+  if (firstMuteGesture) {
+    // The user's very first gesture was on a mute control — this tap
+    // means "turn sound on". Consumed once; every later tap toggles.
+    firstMuteGesture = false;
+    settings.muted = false;
+    audio.unlock();
+    audio.setMuted(false);
+  } else {
+    settings.muted = !settings.muted;
+    audio.setMuted(settings.muted);
+  }
   saveSettings();
-  $('btn-mute').textContent = settings.muted ? '🔇' : '🔊';
-  $('mute-setting').textContent = settings.muted ? 'MUTED' : 'SOUND ON';
+  updateMuteUI();
+}
+
+// Mute UI shows the truth about what can be heard: sound-on only when
+// the context is actually running and unmuted; the settings row says
+// SOUND OFF while the game is simply waiting for its first tap.
+function updateMuteUI() {
+  const audible = audio.audible;
+  $('btn-mute').textContent = audible ? '🔊' : '🔇';
+  $('mute-setting').textContent = settings.muted ? 'MUTED' : (audible ? 'SOUND ON' : 'SOUND OFF');
+}
+
+// ---- Doppler (enemy sources relative to the player) -------------------------
+// Enemies steer by yaw/pitch/speed, so their velocity is rebuilt from
+// heading. Radial velocity: positive = the gap is opening (receding,
+// pitch falls), negative = closing in (pitch rises).
+function radialVelOf(e) {
+  const p = world.player;
+  const dx = e.x - p.x, dy = e.y - p.y, dz = e.z - p.z;
+  const dist = Math.hypot(dx, dy, dz) || 1;
+  const ex = -Math.sin(e.yaw) * Math.cos(e.pitch) * e.speed - p.vx;
+  const ey = Math.sin(e.pitch) * e.speed - p.vy;
+  const ez = -Math.cos(e.yaw) * Math.cos(e.pitch) * e.speed - p.vz;
+  return (ex * dx + ey * dy + ez * dz) / dist;
+}
+function nearestEnemy() {
+  const p = world.player;
+  let best = null, bestD = Infinity;
+  for (const e of world.enemies) {
+    if (e.dead) continue;
+    const d = Math.hypot(e.x - p.x, e.y - p.y, e.z - p.z);
+    if (d < bestD) { bestD = d; best = e; }
+  }
+  return best ? { enemy: best, dist: bestD } : null;
+}
+// The shooter's position rides on the enemyGun event; match the live
+// bandit nearest that spot (it is the shooter) for its radial velocity.
+function enemyNear(x, y, z) {
+  let best = null, bestD = 80;
+  for (const e of world.enemies) {
+    if (e.dead) continue;
+    const d = Math.hypot(e.x - x, e.y - y, e.z - z);
+    if (d < bestD) { bestD = d; best = e; }
+  }
+  return best;
+}
+let prevRadialVel = null; // previous frame's nearest-enemy radial velocity
+function updateEnemyDoppler() {
+  const near = nearestEnemy();
+  if (!near || world.screen !== 'play' || world.paused) {
+    prevRadialVel = null;
+    audio.enemyEngine(0, Infinity, false);
+    return;
+  }
+  const rv = radialVelOf(near.enemy);
+  audio.enemyEngine(rv, near.dist, true);
+  // Close pass: the bandit was closing in and has just started pulling
+  // away while still near — that crossing is the flyby moment. One
+  // whoosh per pass; audio.flyby itself enforces the cooldown.
+  if (prevRadialVel !== null && prevRadialVel < 0 && rv >= 0 && near.dist < 500) {
+    audio.flyby(prevRadialVel, near.dist);
+  }
+  prevRadialVel = rv;
 }
 
 // Fullscreen: true fullscreen needs a user tap on mobile Chrome (the
@@ -180,21 +285,55 @@ $('btn-title-win').addEventListener('click', toTitle);
 $('btn-resume').addEventListener('click', togglePause);
 $('btn-restart').addEventListener('click', () => { world.paused = false; startGame(); });
 $('btn-quit-title').addEventListener('click', () => { world.paused = false; toTitle(); });
-$('btn-mute').addEventListener('click', () => { audio.unlock(); toggleMute(); });
+$('btn-mute').addEventListener('click', toggleMute);
 $('btn-full').addEventListener('click', toggleFullscreen);
-$('quality-setting').addEventListener('click', () => {
-  const order = ['low', 'medium', 'high'];
-  const next = order[(order.indexOf(settings.quality) + 1) % 3];
-  settings.quality = next;
-  saveSettings();
-  scene.setQuality(next);
-  $('quality-setting').textContent = `QUALITY: ${next.toUpperCase()}`;
-  audio.click();
+// Resolution: Low / Medium / High segmented control. Applies live via
+// scene.setQuality (render scale + bloom/post + clouds) — no reload —
+// and persists. The active tier is highlighted by updateQualityUI.
+const QUALITY_NOTES = {
+  low: 'LOW — fastest, no bloom. Best for low-end phones.',
+  medium: 'MEDIUM — balanced, light bloom.',
+  high: 'HIGH — full bloom + god rays. Smoothest on desktop.',
+};
+function updateQualityUI() {
+  document.querySelectorAll('#quality-group .q-btn').forEach((b) => {
+    b.classList.toggle('active', b.dataset.q === settings.quality);
+  });
+  const tierPost = CFG.quality[settings.quality].post;
+  $('quality-note').textContent = QUALITY_NOTES[settings.quality]
+    + (scene.postLevel < tierPost ? ' · Bloom reduced to hold frame rate.' : '');
+}
+document.querySelectorAll('#quality-group .q-btn').forEach((b) => {
+  b.addEventListener('click', () => {
+    settings.quality = b.dataset.q;
+    saveSettings();
+    scene.setQuality(settings.quality);
+    updateQualityUI();
+    audio.click();
+  });
 });
-$('mute-setting').addEventListener('click', () => { audio.unlock(); toggleMute(); });
+// Sound sliders: live (musicGain / sfxGain) and persisted.
+const musicVolEl = $('music-vol'), sfxVolEl = $('sfx-vol');
+musicVolEl.value = Math.round(settings.musicVol * 100);
+sfxVolEl.value = Math.round(settings.sfxVol * 100);
+$('music-vol-val').textContent = `${musicVolEl.value}%`;
+$('sfx-vol-val').textContent = `${sfxVolEl.value}%`;
+musicVolEl.addEventListener('input', () => {
+  settings.musicVol = musicVolEl.value / 100;
+  audio.setMusicVolume(settings.musicVol);
+  $('music-vol-val').textContent = `${musicVolEl.value}%`;
+  saveSettings();
+});
+sfxVolEl.addEventListener('input', () => {
+  settings.sfxVol = sfxVolEl.value / 100;
+  audio.setSfxVolume(settings.sfxVol);
+  $('sfx-vol-val').textContent = `${sfxVolEl.value}%`;
+  saveSettings();
+});
+$('mute-setting').addEventListener('click', toggleMute);
 $('cam-setting').addEventListener('click', toggleCam);
-if (settings.muted) { $('btn-mute').textContent = '🔇'; $('mute-setting').textContent = 'MUTED'; }
-$('quality-setting').textContent = `QUALITY: ${settings.quality.toUpperCase()}`;
+updateMuteUI();
+updateQualityUI();
 $('cam-setting').textContent = `CAMERA: ${settings.camMode.toUpperCase()}`;
 $('btn-cam').textContent = settings.camMode === 'cockpit' ? 'CHASE' : 'COCKPIT';
 if (settings.camMode === 'cockpit') $('cockpit-frame').style.display = 'block';
@@ -248,8 +387,10 @@ function fpsTick(realDt) {
           settings.quality = QUALITY_ORDER[idx - 1];
           saveSettings();
           scene.setQuality(settings.quality, false); // keep post off
-          $('quality-setting').textContent = `QUALITY: ${settings.quality.toUpperCase()}`;
+          updateQualityUI();
         }
+        // The post shed also changes the quality note ("bloom reduced").
+        updateQualityUI();
         lowTime = 0;
       }
     } else lowTime = 0;
@@ -261,7 +402,13 @@ function drainEvents() {
   for (const ev of world.events) {
     switch (ev.type) {
       case 'gun': audio.gun(); break;
-      case 'enemyGun': audio.enemyGun(); break;
+      case 'enemyGun': {
+        // The shooter's pitch follows its own Doppler, not the nearest
+        // bandit's — match the bandit at the event position.
+        const shooter = enemyNear(ev.x, ev.y, ev.z);
+        audio.enemyGun(shooter ? radialVelOf(shooter) : 0);
+        break;
+      }
       case 'missile': audio.missile(); break;
       case 'missileHit': case 'hit': audio.hit(); hitFlash = 0.35; break;
       case 'kill':
@@ -313,6 +460,10 @@ function frame(now) {
   fpsTick(realDt);
   hitFlash = Math.max(0, hitFlash - dt);
 
+  // KeyM works on every screen — the old code only consumed muteToggle
+  // inside the play branch, so the shortcut did nothing on the title.
+  if (input.muteToggle) { input.muteToggle = false; toggleMute(); }
+
   // Title drift: slow cruise so the backdrop lives.
   if (world.screen === 'title' && !frozen) {
     const p = world.player;
@@ -341,7 +492,6 @@ function frame(now) {
     if (input.missile) input.missile = false;
     if (input.camToggle) { input.camToggle = false; toggleCam(); }
     if (input.pauseToggle) { input.pauseToggle = false; togglePause(); }
-    if (input.muteToggle) { input.muteToggle = false; toggleMute(); }
     for (let s = 0; s < TIMESCALE; s++) stepWorld(world, inp, dt);
     // Music mood follows danger.
     const danger = world.player.hull < 30 || (world.wave >= 4 && world.enemies.length > 0);
@@ -353,6 +503,9 @@ function frame(now) {
     audio.engine(world.player.speed * 0.4, 0.3, world.screen === 'title');
   }
 
+  // Nearest-enemy roar + Doppler runs every frame during play; off on
+  // other screens (no bandits there) so the loop never drones on title.
+  updateEnemyDoppler();
   drainEvents();
   scene.sync(world, dt, settings.camMode, world.time);
   if (world.screen === 'play' || SHOT === 'combat' || SHOT === 'lock') {

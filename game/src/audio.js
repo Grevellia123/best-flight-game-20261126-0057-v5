@@ -10,6 +10,8 @@ export function createAudio() {
   let ctx = null;
   let master = null, musicGain = null, sfxGain = null, engineGain = null;
   let muted = false;
+  let musicVol = 1, sfxVol = 1; // user volume sliders (0..1), persist in settings
+  let stateCb = null; // called whenever the context suspends / resumes
   let mood = 'title';
   let engineOsc1 = null, engineOsc2 = null, engineFilter = null;
   let seqTimer = null, nextNoteTime = 0, step = 0;
@@ -22,6 +24,29 @@ export function createAudio() {
   let gunBuf = null, gunFailed = false, lastGunPlay = -1;
   let mslBuf = null, mslFailed = false;
   let gunPlays = 0, mslPlays = 0;
+  let lastMslSrc = null; // most recent missile launch source (for pitch readout)
+  // Enemy close-pass flyby (jet-flyby.mp3, a full approach-pass-recede
+  // whoosh). One voice at a time with a cooldown so overlapping passes
+  // never stack into noise.
+  let flybyBuf = null, flybyFailed = false;
+  let lastFlybySrc = null, lastFlybyAt = -10, flybyPlays = 0;
+  // Doppler: one shared loop for the nearest enemy jet's roar, plus the
+  // last computed factor. The listener is the player's jet, so only
+  // sources moving relative to the player shift — never the own engine.
+  let dopplerFactor = 1;
+  let enemySrc = null, enemyGain = null, enemyFilter = null;
+  let enemyOsc1 = null, enemyOsc2 = null, enemyUseMp3 = false;
+  let lastEnemyGunFreq = null, lastEnemyGunFactor = 1;
+
+  // Physical Doppler for a source with radial velocity v (m/s) relative
+  // to the listener: positive v = receding (pitch falls), negative v =
+  // closing in (pitch rises). Clamped so the shift stays subtle and
+  // musical — never more than a minor third either way.
+  const SPEED_OF_SOUND = 343;
+  function dopplerFromRadial(radialVel) {
+    const v = Math.max(-120, Math.min(120, radialVel || 0));
+    return Math.max(0.85, Math.min(1.2, SPEED_OF_SOUND / (SPEED_OF_SOUND + v)));
+  }
 
   const BPM = { title: 96, play: 126, danger: 148, win: 118, over: 62 };
   // Am – F – C – G, one bar each. Bass roots (Hz) + lead pentatonic (A C D E G).
@@ -40,16 +65,31 @@ export function createAudio() {
     musicGain = ctx.createGain();
     // Title / game-over start quieter than gameplay; applyMusicLevel also
     // enforces this whenever the mood changes or the track starts.
-    musicGain.gain.value = (mood === 'title' || mood === 'over') ? 0.22 : 0.34;
+    musicGain.gain.value = ((mood === 'title' || mood === 'over') ? 0.22 : 0.34) * musicVol;
     musicGain.connect(master);
-    sfxGain = ctx.createGain(); sfxGain.gain.value = 0.9; sfxGain.connect(master);
-    engineGain = ctx.createGain(); engineGain.gain.value = 0; engineGain.connect(master);
+    sfxGain = ctx.createGain(); sfxGain.gain.value = 0.9 * sfxVol; sfxGain.connect(master);
+    engineGain = ctx.createGain(); engineGain.gain.value = 0;
+    // The engine roar is an SFX, so it rides the SFX slider (via sfxGain).
+    engineGain.connect(sfxGain);
     engineFilter = ctx.createBiquadFilter(); engineFilter.type = 'lowpass'; engineFilter.frequency.value = 320;
     engineFilter.connect(engineGain);
     engineOsc1 = ctx.createOscillator(); engineOsc1.type = 'sawtooth'; engineOsc1.frequency.value = 55;
     engineOsc2 = ctx.createOscillator(); engineOsc2.type = 'sawtooth'; engineOsc2.frequency.value = 82.5;
     engineOsc1.connect(engineFilter); engineOsc2.connect(engineFilter);
     engineOsc1.start(); engineOsc2.start();
+    // Nearest-enemy roar: its own quiet loop (MP3 once decoded, synth
+    // saws until then) so the Doppler pitch can move independently of
+    // the player's throttle-driven engine.
+    enemyFilter = ctx.createBiquadFilter(); enemyFilter.type = 'lowpass'; enemyFilter.frequency.value = 520;
+    enemyGain = ctx.createGain(); enemyGain.gain.value = 0;
+    enemyFilter.connect(enemyGain); enemyGain.connect(sfxGain);
+    enemyOsc1 = ctx.createOscillator(); enemyOsc1.type = 'sawtooth'; enemyOsc1.frequency.value = 42;
+    enemyOsc2 = ctx.createOscillator(); enemyOsc2.type = 'sawtooth'; enemyOsc2.frequency.value = 63;
+    enemyOsc1.connect(enemyFilter); enemyOsc2.connect(enemyFilter);
+    enemyOsc1.start(); enemyOsc2.start();
+    // Report suspend / resume so the UI icon always matches real
+    // audibility (a suspended context is silent even when unmuted).
+    ctx.onstatechange = () => { if (stateCb) stateCb(); };
     // White-noise buffer for hats / explosions / wind.
     noiseBuf = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
     const d = noiseBuf.getChannelData(0);
@@ -107,6 +147,11 @@ export function createAudio() {
       .then(buf => ctx.decodeAudioData(buf))
       .then(decoded => { mslBuf = decoded; })
       .catch(() => { mslFailed = true; });
+    fetch('assets/jet-flyby.mp3')
+      .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.arrayBuffer(); })
+      .then(buf => ctx.decodeAudioData(buf))
+      .then(decoded => { flybyBuf = decoded; })
+      .catch(() => { flybyFailed = true; });
   }
 
   function startEngineLoop() {
@@ -126,13 +171,46 @@ export function createAudio() {
     } catch {
       engineFailed = true;
     }
+    // The same recording feeds the enemy roar on its own loop, so its
+    // Doppler pitch can move independently of the player's engine.
+    if (!enemyUseMp3 && enemyFilter) {
+      try {
+        enemySrc = ctx.createBufferSource();
+        enemySrc.buffer = engineBuf;
+        enemySrc.loop = true;
+        enemySrc.connect(enemyFilter);
+        enemySrc.start();
+        enemyUseMp3 = true;
+        try { enemyOsc1.stop(); enemyOsc2.stop(); } catch { /* already stopped */ }
+        enemyOsc1 = null; enemyOsc2 = null;
+      } catch { /* enemy roar stays on its synth fallback */ }
+    }
   }
 
   // Title / game-over play the track a little quieter; gameplay full level.
+  // The user's music slider scales whichever mood level is live.
   function applyMusicLevel() {
     if (!musicGain || !ctx) return;
     const quiet = mood === 'title' || mood === 'over';
-    musicGain.gain.setTargetAtTime(quiet ? 0.22 : 0.34, ctx.currentTime, 0.1);
+    musicGain.gain.setTargetAtTime((quiet ? 0.22 : 0.34) * musicVol, ctx.currentTime, 0.1);
+  }
+
+  // Nearest enemy jet, per frame: its roar fades in inside ~1200 m and
+  // its pitch follows the Doppler factor — rising while it closes in,
+  // falling while it pulls away. Silent when no bandit is near.
+  function enemyEngine(radialVel, dist, active) {
+    if (!ctx || !enemyGain) return;
+    dopplerFactor = dopplerFromRadial(radialVel);
+    const t = ctx.currentTime;
+    const g = active ? Math.max(0, 1 - dist / 1200) * 0.06 : 0;
+    enemyGain.gain.setTargetAtTime(g, t, 0.15);
+    if (enemyUseMp3 && enemySrc) {
+      enemySrc.playbackRate.setTargetAtTime(dopplerFactor, t, 0.1);
+    } else if (enemyOsc1 && enemyOsc2) {
+      enemyOsc1.frequency.setTargetAtTime(42 * dopplerFactor, t, 0.1);
+      enemyOsc2.frequency.setTargetAtTime(63 * dopplerFactor, t, 0.1);
+    }
+    enemyFilter.frequency.setTargetAtTime(320 + dopplerFactor * 320, t, 0.15);
   }
 
   function schedule() {
@@ -204,16 +282,40 @@ export function createAudio() {
     // context — this is preloading, not autoplay.
     prime() { ensure(); },
     unlock() {
-      if (!ensure()) return;
-      if (ctx.state === 'suspended') void ctx.resume();
+      if (!ensure()) return Promise.resolve(false);
+      if (ctx.state === 'suspended') {
+        const p = ctx.resume();
+        p.catch(() => {});
+        startTrack(); // in case the track decoded while the context was suspended
+        return p.then(() => true, () => false);
+      }
       startTrack(); // in case the track decoded while the context was suspended
+      return Promise.resolve(true);
     },
+    // True only when sound can actually be heard right now: a running
+    // context that is not muted. The mute button uses this — not the
+    // muted flag alone — so one tap always turns sound on when silent.
+    get audible() { return !!ctx && ctx.state === 'running' && !muted; },
+    onStateChange(fn) { stateCb = fn; },
     setMood(m) { mood = m; applyMusicLevel(); },
     setMuted(b) {
       muted = b;
       if (master) master.gain.value = b ? 0 : 0.85;
     },
     get muted() { return muted; },
+    // User volume sliders (0..1); live, and applied on top of the mood
+    // level for music. Stored even before the context exists.
+    setMusicVolume(v) {
+      musicVol = Math.max(0, Math.min(1, v));
+      if (musicGain) applyMusicLevel();
+    },
+    setSfxVolume(v) {
+      sfxVol = Math.max(0, Math.min(1, v));
+      if (sfxGain && ctx) sfxGain.gain.setTargetAtTime(0.9 * sfxVol, ctx.currentTime, 0.05);
+    },
+    get musicVolume() { return musicVol; },
+    get sfxVolume() { return sfxVol; },
+    enemyEngine,
     engine(speed, throttle, active) {
       if (!ctx || !engineGain) return;
       const t = ctx.currentTime;
@@ -245,6 +347,9 @@ export function createAudio() {
           lastGunPlay = t;
           const src = ctx.createBufferSource();
           src.buffer = gunBuf;
+          // Own gunfire: no Doppler (the guns move with you), just a
+          // slight pitch wobble per burst so it doesn't sound mechanical.
+          src.playbackRate.value = 0.97 + Math.random() * 0.06;
           src.connect(sfxGain);
           src.start(t);
           gunPlays++;
@@ -255,23 +360,79 @@ export function createAudio() {
       noise(ctx.currentTime, 0.07, 0.22, 2400, 'highpass');
       tone(190, ctx.currentTime, 0.05, 'square', 0.08, sfxGain);
     },
-    enemyGun() { if (ctx) noise(ctx.currentTime, 0.05, 0.05, 1800, 'highpass'); },
+    // Enemy gunfire: the crack's pitch follows the shooter's Doppler —
+    // higher while the bandit closes in, lower while it pulls away.
+    enemyGun(radialVel) {
+      if (!ctx) return;
+      const f = dopplerFromRadial(radialVel);
+      lastEnemyGunFactor = f;
+      lastEnemyGunFreq = Math.max(900, Math.min(2400, 1400 * f));
+      noise(ctx.currentTime, 0.06, 0.07, lastEnemyGunFreq, 'bandpass');
+    },
+    // Close-pass flyby: called once when an enemy jet sweeps past the
+    // player (main.js detects the closing-to-receding crossing while the
+    // bandit is near). The clip is a full approach-pass-recede whoosh,
+    // and its pitch rides the Doppler arc — high on approach, falling
+    // as the jet passes and pulls away. One voice at a time, 2.5 s
+    // cooldown, gain scaled by how close the pass is.
+    flyby(radialVel, dist) {
+      if (!ctx) return;
+      const t = ctx.currentTime;
+      if (t - lastFlybyAt < 2.5) return;
+      lastFlybyAt = t;
+      const g = ctx.createGain();
+      g.gain.value = Math.max(0.15, Math.min(0.6, 0.6 * (1 - dist / 900)));
+      g.connect(sfxGain);
+      if (flybyBuf) {
+        const src = ctx.createBufferSource();
+        src.buffer = flybyBuf;
+        // Start at the approach pitch (closing = above 1), then fall
+        // through the pass to the receding pitch below 1.
+        const startRate = Math.max(1.0, Math.min(1.15, dopplerFromRadial(radialVel)));
+        src.playbackRate.setValueAtTime(startRate, t);
+        src.playbackRate.setTargetAtTime(0.85, t, 0.6);
+        src.connect(g);
+        src.start(t);
+        lastFlybySrc = src;
+        flybyPlays++;
+        return;
+      }
+      // Still loading or failed: synth fallback — a long falling whoosh.
+      const src = ctx.createBufferSource(); src.buffer = noiseBuf;
+      const f = ctx.createBiquadFilter(); f.type = 'bandpass';
+      f.frequency.setValueAtTime(3000, t);
+      f.frequency.exponentialRampToValueAtTime(400, t + 2.2);
+      const g2 = ctx.createGain();
+      g2.gain.setValueAtTime(0.001, t);
+      g2.gain.exponentialRampToValueAtTime(0.5, t + 0.7);
+      g2.gain.exponentialRampToValueAtTime(0.001, t + 2.4);
+      src.connect(f); f.connect(g2); g2.connect(g);
+      src.start(t); src.stop(t + 2.5);
+      flybyPlays++;
+    },
     missile() {
       if (!ctx) return;
       if (mslBuf) {
+        const t = ctx.currentTime;
         const src = ctx.createBufferSource();
         src.buffer = mslBuf;
+        // The missile flies away from the player, so its whoosh falls
+        // in pitch as it travels — 1.12x at launch, easing to 0.85x.
+        src.playbackRate.setValueAtTime(1.12, t);
+        src.playbackRate.setTargetAtTime(0.85, t, 0.45);
         src.connect(sfxGain);
-        src.start(ctx.currentTime);
+        src.start(t);
+        lastMslSrc = src;
         mslPlays++;
         return;
       }
-      // Still loading or failed: synth fallback.
+      // Still loading or failed: synth fallback — a falling filter sweep,
+      // the same receding pitch as the recording.
       const t = ctx.currentTime;
       const src = ctx.createBufferSource(); src.buffer = noiseBuf;
       const f = ctx.createBiquadFilter(); f.type = 'bandpass';
-      f.frequency.setValueAtTime(400, t);
-      f.frequency.exponentialRampToValueAtTime(3200, t + 0.5);
+      f.frequency.setValueAtTime(2400, t);
+      f.frequency.exponentialRampToValueAtTime(500, t + 0.55);
       const g = ctx.createGain();
       g.gain.setValueAtTime(0.4, t);
       g.gain.exponentialRampToValueAtTime(0.001, t + 0.55);
@@ -329,6 +490,20 @@ export function createAudio() {
     // the fallback BGM is live (MP3 still loading, or failed to load).
     get seqActive() { return !!seqTimer; },
     get masterLevel() { return master ? master.gain.value : null; },
+    // Doppler state for debugging / automated checks.
+    get dopplerFactor() { return dopplerFactor; },
+    get enemyEngineRate() { return enemySrc ? enemySrc.playbackRate.value : null; },
+    get enemyEngineLevel() { return enemyGain ? enemyGain.gain.value : null; },
+    get missileRate() { return lastMslSrc ? lastMslSrc.playbackRate.value : null; },
+    get lastEnemyGunFreq() { return lastEnemyGunFreq; },
+    get lastEnemyGunFactor() { return lastEnemyGunFactor; },
+    get flybyState() {
+      if (flybyBuf) return 'mp3';
+      if (flybyFailed) return 'fallback';
+      return 'loading';
+    },
+    get flybyPlays() { return flybyPlays; },
+    get flybyRate() { return lastFlybySrc ? lastFlybySrc.playbackRate.value : null; },
     // Real-SFX state for debugging / automated checks.
     get engineState() {
       if (engineUseMp3) return 'mp3';
