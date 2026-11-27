@@ -1,5 +1,10 @@
 # TALON STRIKE — Changelog
 
+## v5.32 — 28 November 2026
+
+### Reverted v5.31
+- The F-16 Fighting Falcon, the parked lobby, the grey runway with white edge lines and the bright lobby are all taken back out — the game is back to v5.30 exactly: the T-7 Talon and F-35 Lightning II in the hangar, the jet flying its circle in the lobby, and the dark runway.
+
 ## v5.31 — 28 November 2026
 
 ### F-16 Fighting Falcon, and the lobby jet parks on the runway

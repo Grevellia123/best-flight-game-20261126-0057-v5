@@ -465,9 +465,9 @@
   #title-screen {
     align-items: flex-start; justify-content: flex-start; text-align: left;
     padding: 24px clamp(28px, 7vw, 110px);
-    /* No dark scrim: the lobby shows the bright scene and the parked
-       jet on the runway as it is. */
-    background: transparent;
+    background:
+      linear-gradient(90deg, rgba(5,10,16,0.55) 0%, rgba(5,10,16,0.18) 42%, rgba(5,10,16,0.04) 70%, rgba(5,10,16,0.10) 100%),
+      radial-gradient(ellipse at 50% 30%, rgba(10,26,40,0.35) 0%, rgba(5,10,16,0.55) 100%);
   }
   .lobby-col { display: flex; flex-direction: column; align-items: flex-start; gap: 14px; width: min(560px, 94vw); max-width: 100%; margin: auto 0; }
   #title-screen h1.title { font-size: clamp(40px, 6vw, 72px); text-align: left; }
@@ -630,9 +630,8 @@
         <div class="settings-row">
           <button class="set-btn jet-card" data-jet="talon">T-7 TALON</button>
           <button class="set-btn jet-card" data-jet="f35">F-35 LIGHTNING II</button>
-          <button class="set-btn jet-card" data-jet="f16">F-16 FIGHTING FALCON</button>
         </div>
-        <div class="settings-note">Pick your fighter — the T-7 Talon, the F-35 Lightning II or the F-16 Fighting Falcon. Switches right away, no need to reopen.</div>
+        <div class="settings-note">Pick your fighter — the T-7 Talon or the F-35 Lightning II. Switches right away, no need to reopen.</div>
       </div>
   <div class="settings-panel" id="settings-panel" style="display:none">
     <div class="panel-head"><div class="settings-title">SETTINGS</div><button class="panel-close" id="btn-close-settings" aria-label="Close">✕</button></div>
