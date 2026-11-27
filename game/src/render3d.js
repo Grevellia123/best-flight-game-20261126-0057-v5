@@ -4,10 +4,20 @@ import * as THREE from 'three';
 import { CFG } from './config.js';
 import { terrainHeight, riverZ } from './world.js';
 import { mulberry32, fbm2, clamp, lerp } from './random.js';
+import { createPost } from './post.js';
 
 const MAX_TRACERS = 96;
 const MAX_MISSILES = 6;
 const TRAIL_POINTS = 14;
+
+// Scratch vectors for the per-frame sun projection (no allocation in sync).
+const _toSun = new THREE.Vector3();
+const _fwd = new THREE.Vector3();
+const _ndc = new THREE.Vector3();
+const sstep = (a, b, x) => {
+  const t = Math.min(1, Math.max(0, (x - a) / (b - a)));
+  return t * t * (3 - 2 * t);
+};
 
 function cloudTexture() {
   const c = document.createElement('canvas');
@@ -87,16 +97,20 @@ function buildJet({ body, accent, canopy, scale = 1 }) {
   // Cheatline stripe.
   const stripe = new THREE.Mesh(new THREE.BoxGeometry(2.32, 0.22, 6.4), matAccent);
   stripe.position.set(0, 0.35, -0.6); g.add(stripe);
-  // Afterburner flame (scaled by throttle in sync).
+  // Afterburner flame (scaled by throttle in sync). Colour > 1 so the
+  // flame is HDR and passes the bloom threshold (see post.js).
+  const flameMat = new THREE.MeshBasicMaterial({ color: 0xffa040, transparent: true, opacity: 0.9 });
+  flameMat.color.multiplyScalar(1.6);
   const flame = new THREE.Mesh(
     new THREE.ConeGeometry(0.85, 3.6, 10),
-    new THREE.MeshBasicMaterial({ color: 0xffa040, transparent: true, opacity: 0.9 }),
+    flameMat,
   );
   flame.rotation.x = Math.PI / 2; flame.position.z = 6.2;
   flame.name = 'flame';
   g.add(flame);
   const glowTex = glowTexture();
   const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, transparent: true, opacity: 0.7, depthWrite: false }));
+  glow.material.color.setRGB(1.8, 1.3, 0.8); // HDR engine glow: blooms
   glow.scale.set(5, 5, 1); glow.position.z = 5.6; glow.name = 'glow';
   g.add(glow);
   g.scale.setScalar(scale);
@@ -143,6 +157,10 @@ export function createScene(container, qualityName) {
   renderer.toneMappingExposure = 1.05;
   container.appendChild(renderer.domElement);
 
+  // Golden-hour post: HDR bloom + god rays (post.js). Level 0 renders the
+  // scene straight to screen, exactly like before.
+  const post = createPost(renderer);
+
   const scene = new THREE.Scene();
   scene.fog = new THREE.Fog(0xdcc49c, 1600, 8200);
   const camera = new THREE.PerspectiveCamera(62, container.clientWidth / container.clientHeight, 0.5, 20000);
@@ -170,9 +188,11 @@ export function createScene(container, qualityName) {
   sun.position.copy(sunDir).multiplyScalar(100);
   scene.add(sun);
   scene.add(new THREE.HemisphereLight(0xbcd7ff, 0x4a6741, 0.85));
-  // Sun disc + glow.
+  // Sun disc + glow. Colour > 1: the sun is HDR so it blooms, and the
+  // god-ray pass reads it out of the bloom texture.
   const glowTex = glowTexture();
   const sunSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, transparent: true, opacity: 0.95, depthWrite: false, fog: false }));
+  sunSprite.material.color.setRGB(2.2, 1.7, 1.2);
   sunSprite.position.copy(sunDir).multiplyScalar(8800);
   sunSprite.scale.set(1400, 1400, 1);
   scene.add(sunSprite);
@@ -239,6 +259,7 @@ export function createScene(container, qualityName) {
       new THREE.TorusGeometry(48, 3.2, 10, 40),
       new THREE.MeshBasicMaterial({ color: 0xffb020, transparent: true, opacity: 0.9 }),
     );
+    ring.material.color.multiplyScalar(1.6); // HDR: rings glow in bloom
     ring.position.set(r.x, r.y, r.z);
     scene.add(ring);
     return ring;
@@ -250,7 +271,7 @@ export function createScene(container, qualityName) {
   const tracerCol = new Float32Array(MAX_TRACERS * 2 * 3);
   tracerGeo.setAttribute('position', new THREE.BufferAttribute(tracerPos, 3));
   tracerGeo.setAttribute('color', new THREE.BufferAttribute(tracerCol, 3));
-  const tracers = new THREE.LineSegments(tracerGeo, new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.95 }));
+  const tracers = new THREE.LineSegments(tracerGeo, new THREE.LineBasicMaterial({ vertexColors: true, transparent: true, opacity: 0.95, color: new THREE.Color(1.8, 1.8, 1.8) }));
   tracers.frustumCulled = false;
   scene.add(tracers);
 
@@ -263,7 +284,7 @@ export function createScene(container, qualityName) {
     m.add(body);
     const trailGeo = new THREE.BufferGeometry();
     trailGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(TRAIL_POINTS * 3), 3));
-    const trail = new THREE.Line(trailGeo, new THREE.LineBasicMaterial({ color: 0xffc070, transparent: true, opacity: 0.8 }));
+    const trail = new THREE.Line(trailGeo, new THREE.LineBasicMaterial({ color: new THREE.Color(1.8, 1.35, 0.8), transparent: true, opacity: 0.8 }));
     trail.frustumCulled = false;
     m.add(trail);
     m.visible = false;
@@ -277,10 +298,10 @@ export function createScene(container, qualityName) {
     const n = 42;
     const geo = new THREE.BufferGeometry();
     geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(n * 3), 3));
-    const pts = new THREE.Points(geo, new THREE.PointsMaterial({ color: 0xffa030, size: 14, transparent: true, opacity: 0, depthWrite: false }));
+    const pts = new THREE.Points(geo, new THREE.PointsMaterial({ color: new THREE.Color(1.6, 1.0, 0.3), size: 14, transparent: true, opacity: 0, depthWrite: false }));
     pts.frustumCulled = false;
     scene.add(pts);
-    const flash = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, transparent: true, opacity: 0, depthWrite: false }));
+    const flash = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, transparent: true, opacity: 0, depthWrite: false, color: new THREE.Color(2.0, 1.4, 0.7) }));
     flash.scale.set(60, 60, 1);
     scene.add(flash);
     explosions.push({ pts, flash, t: 1e9, dirs: [] });
@@ -316,13 +337,23 @@ export function createScene(container, qualityName) {
     camPos: new THREE.Vector3(0, 560, 980),
     camLook: new THREE.Vector3(0, 520, 0),
     quality: qualityName,
+    postLevel: CFG.quality[qualityName].post,
+    post,
   };
 
-  handle.setQuality = (q) => {
+  // Post level is separate from render quality so the FPS step-down can
+  // shed the bloom/god-rays first, before dropping resolution.
+  handle.setPostLevel = (l) => {
+    handle.postLevel = Math.max(0, Math.min(2, l | 0));
+    post.setLevel(handle.postLevel);
+  };
+
+  handle.setQuality = (q, resetPost = true) => {
     handle.quality = q;
     const cfg = CFG.quality[q];
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, cfg.pixelRatio));
     clouds.forEach((c, i) => { c.visible = i < cfg.clouds; });
+    if (resetPost) handle.setPostLevel(cfg.post);
     handle.resize();
   };
 
@@ -344,9 +375,15 @@ export function createScene(container, qualityName) {
     renderer.setSize(w, h);
     camera.aspect = w / h;
     camera.updateProjectionMatrix();
+    post.resize();
   };
 
-  handle.sync = (world, dt, camMode, time) => {
+  // snap: staged screenshots (?shot=) jump the camera straight to the
+  // posed position on the first sync instead of lerping in from the
+  // initial view — at SwiftShader frame rates the lerp takes ~25 frames
+  // to converge, so unsnapped shots catch the camera mid-swing. Real
+  // play never passes snap, so the fly-in is unchanged.
+  handle.sync = (world, dt, camMode, time, snap = false) => {
     const p = world.player;
     // Player jet pose.
     playerJet.position.set(p.x, p.y, p.z);
@@ -396,7 +433,7 @@ export function createScene(container, qualityName) {
       const o = ti * 6;
       tracerPos[o] = b.x; tracerPos[o + 1] = b.y; tracerPos[o + 2] = b.z;
       tracerPos[o + 3] = b.x - b.vx * 0.035; tracerPos[o + 4] = b.y - b.vy * 0.035; tracerPos[o + 5] = b.z - b.vz * 0.035;
-      const c = b.from === 'player' ? [1, 0.85, 0.3] : [1, 0.25, 0.2];
+      const c = b.from === 'player' ? [1, 0.85, 0.3] : [1.3, 0.35, 0.28]; // x1.8 material: both pass the bloom threshold
       tracerCol[o] = c[0]; tracerCol[o + 1] = c[1]; tracerCol[o + 2] = c[2];
       tracerCol[o + 3] = c[0]; tracerCol[o + 4] = c[1]; tracerCol[o + 5] = c[2];
       ti++;
@@ -448,7 +485,9 @@ export function createScene(container, qualityName) {
       lockRing.position.set(world.lockTarget.x, world.lockTarget.y, world.lockTarget.z);
       lockRing.lookAt(camera.position);
       const locked = world.lockProgress >= 1;
-      lockRing.material.color.setHex(locked ? 0xff2020 : 0xffc020);
+      // HDR ring colours so the lock ring blooms (setHex caps at 1.0).
+      if (locked) lockRing.material.color.setRGB(1.8, 0.25, 0.25);
+      else lockRing.material.color.setRGB(1.8, 1.3, 0.25);
       lockRing.scale.setScalar(1 + Math.sin(time * 6) * 0.08);
     } else lockRing.visible = false;
 
@@ -481,13 +520,19 @@ export function createScene(container, qualityName) {
       desiredPos.set(p.x + Math.sin(a) * 34, p.y + 8 + Math.sin(time * 0.3) * 3, p.z + Math.cos(a) * 34);
       const right = new THREE.Vector3(Math.cos(a), 0, -Math.sin(a));
       desiredLook.set(p.x - right.x * 20, p.y + 4, p.z - right.z * 20);
-      handle.camPos.lerp(desiredPos, 1 - Math.pow(0.001, dt));
-      handle.camLook.lerp(desiredLook, 1 - Math.pow(0.001, dt));
+      if (snap) { handle.camPos.copy(desiredPos); handle.camLook.copy(desiredLook); }
+      else {
+        handle.camPos.lerp(desiredPos, 1 - Math.pow(0.001, dt));
+        handle.camLook.lerp(desiredLook, 1 - Math.pow(0.001, dt));
+      }
     } else {
       desiredPos.set(p.x - nose.x * 30, p.y - nose.y * 30 + 7.5, p.z - nose.z * 30);
       desiredLook.set(p.x + nose.x * 80, p.y + nose.y * 80, p.z + nose.z * 80);
-      handle.camPos.lerp(desiredPos, 1 - Math.pow(0.0001, dt));
-      handle.camLook.lerp(desiredLook, 1 - Math.pow(0.0001, dt));
+      if (snap) { handle.camPos.copy(desiredPos); handle.camLook.copy(desiredLook); }
+      else {
+        handle.camPos.lerp(desiredPos, 1 - Math.pow(0.0001, dt));
+        handle.camLook.lerp(desiredLook, 1 - Math.pow(0.0001, dt));
+      }
     }
     camera.position.copy(handle.camPos);
     camera.lookAt(handle.camLook);
@@ -497,7 +542,16 @@ export function createScene(container, qualityName) {
       camera.position.x += (Math.random() - 0.5) * s;
       camera.position.y += (Math.random() - 0.5) * s;
     }
-    renderer.render(scene, camera);
+    // Sun screen position + visibility for the god-ray pass: fade the rays
+    // out as the sun leaves the frame or swings behind the camera.
+    _toSun.subVectors(sunSprite.position, camera.position).normalize();
+    camera.getWorldDirection(_fwd);
+    const facing = _toSun.dot(_fwd);
+    _ndc.copy(sunSprite.position).project(camera);
+    const sunUV = { x: _ndc.x * 0.5 + 0.5, y: _ndc.y * 0.5 + 0.5 };
+    const off = Math.max(Math.abs(sunUV.x - 0.5), Math.abs(sunUV.y - 0.5)) * 2;
+    const sunVis = sstep(0.05, 0.35, facing) * (1 - sstep(0.7, 1.25, off));
+    post.render(scene, camera, sunUV, sunVis);
   };
 
   handle.setQuality(qualityName);

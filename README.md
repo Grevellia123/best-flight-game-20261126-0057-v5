@@ -14,7 +14,7 @@ TALON STRIKE — a 3D air-combat flight game. Fly the T-7 Talon interceptor for 
 - **A living world** — green rolling hills, a winding river, a coastline with islands, golden-hour sun, drifting clouds, a home runway, and glowing rings worth +50 CR.
 - **Full HUD** — airspeed and altitude tapes, compass, radar, fuel / hull / gun-heat bars, missile count, wave and kill feed, lock indicator, stall warning.
 - **Two cameras** — chase and cockpit (C key or the COCKPIT button).
-- **Adaptive music** — original Web Audio soundtrack that shifts between title, combat, danger, win and game over, plus synthesized SFX and an engine hum tied to speed. Mute any time.
+- **Music & sound** — "Vector Locked" as looped background music, a real jet-engine roar tied to throttle, real cannon and missile-launch recordings, plus synthesized SFX for explosions and locks. Mute any time.
 - **Graphics settings** — Low / Medium / High with FPS auto step-down, persisted locally.
 
 ## Run it
@@ -40,3 +40,10 @@ No build step, no network requests — everything (including Three.js r160, vend
 - `1-combat.jpg` — wave combat, tracers in the air
 - `2-lock.jpg` — cockpit view, missile lock on a bandit
 - `3-victory.jpg` — victory debrief after clearing all 5 waves
+
+## Sound credits
+
+- Background music: "Vector Locked" (user-supplied track).
+- Jet engine: "Jet Engine Full Thrust Roar" (Casper Sound Effects License, free for commercial use in games).
+- Machine gun: "Machine Gun Burst 50 Cal" by Mike Koenig, via SoundBible (CC-BY 3.0).
+- Missile launch: "Powerful rocket launch sound" (SoundDino free license).

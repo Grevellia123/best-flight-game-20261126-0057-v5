@@ -75,9 +75,11 @@ export const CFG = {
     { x: 1400, y: 480, z: -3000 },
   ],
   quality: {
-    low:    { pixelRatio: 0.75, clouds: 14, particles: 0.4, shadows: false, streaks: false },
-    medium: { pixelRatio: 1.0,  clouds: 26, particles: 0.7, shadows: false, streaks: true },
-    high:   { pixelRatio: 2.0,  clouds: 40, particles: 1.0, shadows: true,  streaks: true },
+    // post: golden-hour post level — 0 off, 1 reduced bloom + light rays,
+    // 2 full bloom + god rays. The FPS auto step-down sheds post first.
+    low:    { pixelRatio: 0.75, clouds: 14, particles: 0.4, shadows: false, streaks: false, post: 0 },
+    medium: { pixelRatio: 1.0,  clouds: 26, particles: 0.7, shadows: false, streaks: true,  post: 1 },
+    high:   { pixelRatio: 2.0,  clouds: 40, particles: 1.0, shadows: true,  streaks: true,  post: 2 },
   },
 };
 

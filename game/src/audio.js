@@ -1,6 +1,11 @@
-// TALON STRIKE — all sound is synthesized with Web Audio. No audio files.
-// Music: a driving minor-key sequencer; tempo and density follow the game mood
-// (title / play / danger / win / over). SFX: guns, missiles, explosions, locks.
+// TALON STRIKE — background music is the user's MP3 track
+// (game/assets/vector-locked.mp3, looped). Engine, gun and missile sounds
+// are real recordings (game/assets/jet-engine.mp3 loop, machine-gun.mp3
+// burst, missile.mp3 launch) with the old synthesized sounds as fallback
+// if a file fails to load or decode, so the game is never silent.
+// Explosions, lock tones and UI sounds are still synthesized. Moods
+// (title / play / danger / win / over) only change the music level now —
+// the track itself is one continuous loop.
 export function createAudio() {
   let ctx = null;
   let master = null, musicGain = null, sfxGain = null, engineGain = null;
@@ -9,6 +14,14 @@ export function createAudio() {
   let engineOsc1 = null, engineOsc2 = null, engineFilter = null;
   let seqTimer = null, nextNoteTime = 0, step = 0;
   let noiseBuf = null;
+  // MP3 track state.
+  let trackBuf = null, trackSrc = null, trackStarted = false;
+  let trackFailed = false, trackStartCtx = 0;
+  // Real SFX state (MP3 buffers; synth fallback if a file fails).
+  let engineBuf = null, engineSrc = null, engineUseMp3 = false, engineFailed = false;
+  let gunBuf = null, gunFailed = false, lastGunPlay = -1;
+  let mslBuf = null, mslFailed = false;
+  let gunPlays = 0, mslPlays = 0;
 
   const BPM = { title: 96, play: 126, danger: 148, win: 118, over: 62 };
   // Am – F – C – G, one bar each. Bass roots (Hz) + lead pentatonic (A C D E G).
@@ -39,7 +52,83 @@ export function createAudio() {
     for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
     nextNoteTime = ctx.currentTime + 0.1;
     seqTimer = setInterval(schedule, 25);
+    loadTrack();
+    loadSfx();
     return true;
+  }
+
+  // Load the MP3 BGM in the background. While it loads (or if it fails),
+  // the synthesized sequencer keeps playing; once decoded, the track takes
+  // over and the sequencer stops so the two never play together.
+  function loadTrack() {
+    if (trackBuf || trackFailed || !ctx) return;
+    fetch('assets/vector-locked.mp3')
+      .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.arrayBuffer(); })
+      .then(buf => ctx.decodeAudioData(buf))
+      .then(decoded => { trackBuf = decoded; startTrack(); })
+      .catch(() => { trackFailed = true; });
+  }
+
+  function startTrack() {
+    if (!trackBuf || trackStarted || !ctx || !musicGain) return;
+    trackSrc = ctx.createBufferSource();
+    trackSrc.buffer = trackBuf;
+    trackSrc.loop = true;
+    trackSrc.connect(musicGain);
+    trackSrc.start();
+    trackStartCtx = ctx.currentTime;
+    trackStarted = true;
+    if (seqTimer) { clearInterval(seqTimer); seqTimer = null; }
+    applyMusicLevel();
+  }
+
+  // Load the three real SFX recordings in the background. The engine loop
+  // swaps in as soon as it decodes (the synth oscillators stop so the two
+  // never double up); gun / missile play per event once their buffers are
+  // ready. Any failure leaves that sound on its synth fallback.
+  function loadSfx() {
+    if (!ctx) return;
+    fetch('assets/jet-engine.mp3')
+      .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.arrayBuffer(); })
+      .then(buf => ctx.decodeAudioData(buf))
+      .then(decoded => { engineBuf = decoded; startEngineLoop(); })
+      .catch(() => { engineFailed = true; });
+    fetch('assets/machine-gun.mp3')
+      .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.arrayBuffer(); })
+      .then(buf => ctx.decodeAudioData(buf))
+      .then(decoded => { gunBuf = decoded; })
+      .catch(() => { gunFailed = true; });
+    fetch('assets/missile.mp3')
+      .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.arrayBuffer(); })
+      .then(buf => ctx.decodeAudioData(buf))
+      .then(decoded => { mslBuf = decoded; })
+      .catch(() => { mslFailed = true; });
+  }
+
+  function startEngineLoop() {
+    if (!engineBuf || engineUseMp3 || !ctx || !engineFilter) return;
+    try {
+      engineSrc = ctx.createBufferSource();
+      engineSrc.buffer = engineBuf;
+      engineSrc.loop = true;
+      engineSrc.connect(engineFilter);
+      engineSrc.start();
+      engineUseMp3 = true;
+      // Synth oscillators are no longer needed — stop them so the roar
+      // is the only engine sound. (They cannot be restarted, but the MP3
+      // loop is the live path from here on.)
+      try { engineOsc1.stop(); engineOsc2.stop(); } catch { /* already stopped */ }
+      engineOsc1 = null; engineOsc2 = null;
+    } catch {
+      engineFailed = true;
+    }
+  }
+
+  // Title / game-over play the track a little quieter; gameplay full level.
+  function applyMusicLevel() {
+    if (!musicGain || !ctx) return;
+    const quiet = mood === 'title' || mood === 'over';
+    musicGain.gain.setTargetAtTime(quiet ? 0.22 : 0.34, ctx.currentTime, 0.1);
   }
 
   function schedule() {
@@ -104,12 +193,13 @@ export function createAudio() {
     if (mood === 'win' && inBar === 0) tone(root * 2, t, spb * 3, 'sine', 0.22, musicGain);
   }
 
-  return {
+  const api = {
     unlock() {
       if (!ensure()) return;
       if (ctx.state === 'suspended') void ctx.resume();
+      startTrack(); // in case the track decoded while the context was suspended
     },
-    setMood(m) { mood = m; },
+    setMood(m) { mood = m; applyMusicLevel(); },
     setMuted(b) {
       muted = b;
       if (master) master.gain.value = b ? 0 : 0.85;
@@ -118,21 +208,56 @@ export function createAudio() {
     engine(speed, throttle, active) {
       if (!ctx || !engineGain) return;
       const t = ctx.currentTime;
-      const target = active ? 0.05 + throttle * 0.075 : 0;
+      // The MP3 roar is louder than the old synth hum, so its gain tops
+      // out a little lower; the shape (idle → full throttle) is the same.
+      const target = active ? (engineUseMp3 ? 0.045 + throttle * 0.07 : 0.05 + throttle * 0.075) : 0;
       engineGain.gain.setTargetAtTime(target, t, 0.1);
-      const f = 42 + speed * 0.28 + throttle * 30;
-      engineOsc1.frequency.setTargetAtTime(f, t, 0.08);
-      engineOsc2.frequency.setTargetAtTime(f * 1.5, t, 0.08);
+      if (engineUseMp3 && engineSrc) {
+        // Throttle / speed drive the loop like a real turbine spooling:
+        // playback rate rises with throttle, filter opens with throttle.
+        const rate = Math.max(0.85, Math.min(1.35, 0.9 + throttle * 0.3 + speed * 0.0004));
+        engineSrc.playbackRate.setTargetAtTime(rate, t, 0.08);
+      } else if (engineOsc1 && engineOsc2) {
+        const f = 42 + speed * 0.28 + throttle * 30;
+        engineOsc1.frequency.setTargetAtTime(f, t, 0.08);
+        engineOsc2.frequency.setTargetAtTime(f * 1.5, t, 0.08);
+      }
       engineFilter.frequency.setTargetAtTime(240 + throttle * 900, t, 0.1);
     },
     gun() {
       if (!ctx) return;
+      // The burst file is 2 s with 3 bursts inside, but the guns fire at
+      // 16 shots/s — replaying it per shot would stack dozens of bursts.
+      // Play at most one burst per 0.45 s; while it is sounding, extra
+      // shots stay silent (the burst is still audible).
+      if (gunBuf) {
+        const t = ctx.currentTime;
+        if (t - lastGunPlay >= 0.45) {
+          lastGunPlay = t;
+          const src = ctx.createBufferSource();
+          src.buffer = gunBuf;
+          src.connect(sfxGain);
+          src.start(t);
+          gunPlays++;
+        }
+        return;
+      }
+      // Still loading or failed: synth fallback so shots are never silent.
       noise(ctx.currentTime, 0.07, 0.22, 2400, 'highpass');
       tone(190, ctx.currentTime, 0.05, 'square', 0.08, sfxGain);
     },
     enemyGun() { if (ctx) noise(ctx.currentTime, 0.05, 0.05, 1800, 'highpass'); },
     missile() {
       if (!ctx) return;
+      if (mslBuf) {
+        const src = ctx.createBufferSource();
+        src.buffer = mslBuf;
+        src.connect(sfxGain);
+        src.start(ctx.currentTime);
+        mslPlays++;
+        return;
+      }
+      // Still loading or failed: synth fallback.
       const t = ctx.currentTime;
       const src = ctx.createBufferSource(); src.buffer = noiseBuf;
       const f = ctx.createBiquadFilter(); f.type = 'bandpass';
@@ -176,5 +301,44 @@ export function createAudio() {
     hit() { if (ctx) noise(ctx.currentTime, 0.08, 0.14, 1200, 'bandpass'); },
     click() { if (ctx) tone(740, ctx.currentTime, 0.06, 'sine', 0.12, sfxGain); },
     warn() { if (ctx) tone(440, ctx.currentTime, 0.18, 'square', 0.1, sfxGain); },
+    // Read-only state for debugging / automated checks.
+    get ctxState() { return ctx ? ctx.state : 'none'; },
+    get trackState() {
+      if (trackFailed) return 'fallback';
+      if (trackStarted) return 'playing';
+      if (trackBuf) return 'ready';
+      return 'loading';
+    },
+    get trackActive() { return trackStarted; },
+    get trackLoop() { return trackSrc ? trackSrc.loop : false; },
+    get trackTime() {
+      if (!trackStarted || !ctx || !trackBuf) return 0;
+      return (ctx.currentTime - trackStartCtx) % trackBuf.duration;
+    },
+    get trackDuration() { return trackBuf ? trackBuf.duration : 0; },
+    get masterLevel() { return master ? master.gain.value : null; },
+    // Real-SFX state for debugging / automated checks.
+    get engineState() {
+      if (engineUseMp3) return 'mp3';
+      if (engineFailed) return 'fallback';
+      return 'loading';
+    },
+    get gunState() {
+      if (gunBuf) return 'mp3';
+      if (gunFailed) return 'fallback';
+      return 'loading';
+    },
+    get missileState() {
+      if (mslBuf) return 'mp3';
+      if (mslFailed) return 'fallback';
+      return 'loading';
+    },
+    get engineRate() { return engineSrc ? engineSrc.playbackRate.value : null; },
+    get engineLevel() { return engineGain ? engineGain.gain.value : null; },
+    get enginePlaying() { return engineUseMp3 && !!engineSrc; },
+    get gunPlays() { return gunPlays; },
+    get missilePlays() { return mslPlays; },
   };
+  if (typeof window !== 'undefined') window.__talonAudio = api;
+  return api;
 }

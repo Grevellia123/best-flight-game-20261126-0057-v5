@@ -86,7 +86,12 @@ export function createInput(playSurface, els) {
   if (els.btnMsl) els.btnMsl.addEventListener('pointerdown', (e) => { e.preventDefault(); state.missile = true; });
   if (els.btnCam) els.btnCam.addEventListener('pointerdown', (e) => { e.preventDefault(); state.camToggle = true; });
   if (els.btnPause) els.btnPause.addEventListener('pointerdown', (e) => { e.preventDefault(); state.pauseToggle = true; });
-  if (els.btnMute) els.btnMute.addEventListener('pointerdown', (e) => { e.preventDefault(); state.muteToggle = true; });
+  // NOTE: btnMute has NO pointerdown handler on purpose — its click
+  // handler in main.js is the only mute path. A pointerdown handler here
+  // PLUS the click handler toggled mute twice per tap (Chromium fires the
+  // click even after pointerdown preventDefault), so the button looked
+  // dead. Click fires for both mouse clicks and touch taps; KeyM still
+  // works through state.muteToggle.
 
   // Per-frame: throttle on Shift/Ctrl (or R/V) and wheel. Touch has no
   // throttle control — throttle stays at its cruise default (0.62).

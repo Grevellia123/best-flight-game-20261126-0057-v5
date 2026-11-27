@@ -192,7 +192,7 @@ if (SHOT) {
   else if (SHOT === 'victory') { fillDebrief('win'); showScreen('win'); audio.setMood('win'); }
   else showScreen(null);
   frozen = shotInfo.freeze;
-  scene.sync(world, 0, settings.camMode, world.time);
+  scene.sync(world, 0, settings.camMode, world.time, true);
   scene.resize();
 }
 if (AUTOPILOT && !SHOT) {
@@ -210,14 +210,20 @@ function fpsTick(realDt) {
   if (fpsN >= 30) {
     fpsAvg = fpsAcc / fpsN;
     fpsAcc = 0; fpsN = 0;
-    if (fpsAvg < 28 && settings.quality !== 'low' && world.screen === 'play') {
+    if (fpsAvg < 28 && world.screen === 'play') {
       lowTime += 1;
       if (lowTime >= 3) {
-        const idx = QUALITY_ORDER.indexOf(settings.quality);
-        settings.quality = QUALITY_ORDER[idx - 1];
-        saveSettings();
-        scene.setQuality(settings.quality);
-        $('quality-setting').textContent = `QUALITY: ${settings.quality.toUpperCase()}`;
+        if (scene.postLevel > 0) {
+          // Shed the expensive post effects (bloom / god rays) first —
+          // the frame rate usually recovers without dropping resolution.
+          scene.setPostLevel(scene.postLevel - 1);
+        } else if (settings.quality !== 'low') {
+          const idx = QUALITY_ORDER.indexOf(settings.quality);
+          settings.quality = QUALITY_ORDER[idx - 1];
+          saveSettings();
+          scene.setQuality(settings.quality, false); // keep post off
+          $('quality-setting').textContent = `QUALITY: ${settings.quality.toUpperCase()}`;
+        }
         lowTime = 0;
       }
     } else lowTime = 0;
