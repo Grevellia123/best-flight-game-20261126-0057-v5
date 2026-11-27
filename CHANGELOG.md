@@ -1,5 +1,21 @@
 # TALON STRIKE — Changelog
 
+## v5.5 — 27 November 2026
+
+### FLY THE SORTIE button no longer clips on phones
+- On a 360 px phone the button label wrapped to two lines — "FLY THE"
+  on the first line, "SORTIE" on the second — and the second line was
+  cut off at the button's bottom edge. Two causes, both fixed: the
+  label at 18 px with 44 px side padding was wider than the 312 px
+  column (Android monospace runs wider than the estimate), and the
+  title screen's flex column then squashed the wrapped button back
+  down to one line tall.
+- The button now stays on one line at every width: its type shrinks
+  fluidly to 15 px on phones (15 px, tighter spacing and 20 px side
+  padding under 640 px), and it never wraps. Nothing on the title
+  screen can be squashed any more either — the screen scrolls instead
+  of clipping, which is what it was built to do.
+
 ## v5.4 — 27 November 2026
 
 ### Tighter missile launch

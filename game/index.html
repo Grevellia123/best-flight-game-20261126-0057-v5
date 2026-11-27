@@ -148,6 +148,12 @@
        when the column overflows; plain center would clip it. */
     overflow-y: auto; -webkit-overflow-scrolling: touch;
   }
+  /* Never squash a child to fit: the title column is taller than a phone
+     viewport, and flex-shrink let the column crush the FLY button to one
+     line tall while its label wrapped to two — "SORTIE" was cut off at
+     the button's bottom edge. With shrink off, the column scrolls
+     instead of clipping, which is what overflow-y above is for. */
+  .screen > * { flex-shrink: 0; }
   .kicker { font-size: 12px; letter-spacing: 0.42em; color: var(--gold); font-weight: 700; }
   h1.title { font-size: clamp(44px, 9vw, 92px); line-height: 0.95; letter-spacing: 0.04em; color: #eaf7ff; text-shadow: 0 0 32px rgba(127, 212, 255, 0.45); }
   h1.title .strike { color: var(--gold); }
@@ -158,8 +164,15 @@
   .big-btn {
     pointer-events: auto; cursor: pointer; margin-top: 6px;
     font: 700 18px ui-monospace, monospace; letter-spacing: 0.14em; color: #101c24;
+    /* "FLY THE SORTIE" wrapped to two lines on 360px phones (Android
+       monospace runs wider than the 0.6em estimate, so 18px + 44px side
+       padding overflowed the 312px column) and the second line was
+       clipped. Keep it on one line at every width: fluid type that
+       shrinks to 15px on phones, tighter side padding, and no wrapping. */
+    font-size: clamp(15px, 4.2vw, 18px); letter-spacing: 0.1em;
+    white-space: nowrap; max-width: 100%; line-height: 1.25;
     background: linear-gradient(180deg, #ffc84d, #ff9d1e); border: none; border-radius: 8px;
-    padding: 16px 44px; min-height: 56px; box-shadow: 0 6px 24px rgba(255, 157, 30, 0.35);
+    padding: 16px 28px; min-height: 56px; box-shadow: 0 6px 24px rgba(255, 157, 30, 0.35);
   }
   .big-btn:active { transform: translateY(1px); }
   .ghost-btn {
@@ -204,6 +217,7 @@
   @media (max-width: 640px) {
     #compass { max-width: 210px; height: 48px; }
     #wave-info { font-size: 12px; }
+    .big-btn { font-size: 15px; letter-spacing: 0.08em; padding: 14px 20px; min-height: 52px; }
     #bars { width: 200px; }
     #radar { width: 104px; height: 104px; }
     #ias-tape, #alt-tape { height: 170px; width: 52px; }
