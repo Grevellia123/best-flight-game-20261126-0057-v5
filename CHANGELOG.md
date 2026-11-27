@@ -1,5 +1,27 @@
 # TALON STRIKE — Changelog
 
+## v5.19 — 27 November 2026
+
+### New lobby: PLAY / HANGAR / SETTINGS, jet big on the right
+- The title screen is rebuilt like the reference menu: three tall
+  buttons stacked on the left — PLAY (gold, flies the sortie),
+  HANGAR and SETTINGS — the jet orbits big on the right, and the 5
+  waves run as one small line along the bottom. The old centred
+  stack (title, wave chips, FLY THE SORTIE, settings panel filling
+  the screen) is gone.
+- HANGAR opens a fighter picker under the menu: T-7 TALON or
+  F-35 LIGHTNING II, the current pick highlighted in gold. It
+  switches right away, exactly like the JET button in Settings,
+  and the two stay in sync — pick in either place, both show it.
+- SETTINGS opens the same sound / camera / resolution /
+  antialiasing panel under the menu instead of showing it all the
+  time. It still moves into the pause screen mid-sortie, and it
+  still starts closed there.
+- On short phone-landscape screens the menu shrinks (smaller
+  buttons and title) so it fits, and the waves / controls lines
+  hide while a panel is open so nothing overlaps. Nothing else
+  changed: same flight model, same waves, same HUD.
+
 ## v5.18 — 27 November 2026
 
 ### Reverted v5.17

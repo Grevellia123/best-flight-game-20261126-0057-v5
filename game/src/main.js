@@ -145,20 +145,32 @@ const screens = { title: $('title-screen'), over: $('over-screen'), win: $('win-
 // controls are reachable mid-sortie — no duplicate controls, no second
 // set of IDs, and the sliders keep working because they are looked up by
 // ID wherever the panel sits. It stays closed on pause (tap ⚙ SETTINGS
-// to open it) and moves back, reset to visible, on any other screen.
+// to open it) and moves back, reset to closed, on any other screen.
+// On the title screen it sits inside #lobby-panels, under HANGAR, and
+// starts closed too — tap SETTINGS in the lobby menu to open it. The
+// HANGAR panel lives in #lobby-panels as well and never moves.
 const settingsPanel = $('settings-panel');
+const hangarPanel = $('hangar-panel');
+const lobbyPanels = $('lobby-panels');
+let lobbyPanel = null; // 'hangar' | 'settings' | null — which lobby panel is open
 function showScreen(name) {
   for (const [k, el] of Object.entries(screens)) el.style.display = k === name ? 'flex' : 'none';
   $('hud').style.display = name === null ? 'block' : 'none';
   $('touch-controls').style.display = (name === null && isTouch) ? 'block' : 'none';
   document.body.classList.toggle('on-title', name === 'title');
+  // Lobby panels always start closed on any screen change.
+  lobbyPanel = null;
+  hangarPanel.hidden = true;
+  screens.title.classList.remove('panel-open');
+  $('btn-hangar').classList.remove('active');
+  $('btn-lobby-settings').classList.remove('active');
   if (name === 'pause') {
     screens.pause.appendChild(settingsPanel);
     settingsPanel.style.display = 'none';
     $('btn-pause-settings').textContent = '⚙ SETTINGS';
-  } else if (settingsPanel.parentElement !== screens.title) {
-    screens.title.appendChild(settingsPanel);
-    settingsPanel.style.display = '';
+  } else {
+    if (settingsPanel.parentElement !== lobbyPanels) lobbyPanels.appendChild(settingsPanel);
+    settingsPanel.style.display = 'none';
   }
 }
 
@@ -380,19 +392,44 @@ document.querySelectorAll('#quality-group .q-btn').forEach((b) => {
 });
 // Jet: T-7 TALON or F-35 LIGHTNING II. Swaps live — the scene rebuilds
 // the player jet on the spot, so the jet in the title orbit changes as
-// soon as you tap. It persists like the other settings.
+// soon as you tap. It persists like the other settings. setJet is the
+// one place that changes it: the JET button in Settings cycles, the
+// HANGAR cards pick directly — both stay in sync through updateJetUI.
 const JET_ORDER = ['talon', 'f35'];
 const JET_LABEL = { talon: 'T-7 TALON', f35: 'F-35 LIGHTNING II' };
 function updateJetUI() {
   $('jet-setting').textContent = `JET: ${JET_LABEL[settings.jet]}`;
+  document.querySelectorAll('.jet-card').forEach((b) => {
+    b.classList.toggle('active', b.dataset.jet === settings.jet);
+  });
 }
-$('jet-setting').addEventListener('click', () => {
-  settings.jet = JET_ORDER[(JET_ORDER.indexOf(settings.jet) + 1) % JET_ORDER.length];
+function setJet(model) {
+  settings.jet = model;
   saveSettings();
   scene.setPlayerJet(settings.jet);
   updateJetUI();
   audio.click();
+}
+$('jet-setting').addEventListener('click', () => {
+  setJet(JET_ORDER[(JET_ORDER.indexOf(settings.jet) + 1) % JET_ORDER.length]);
 });
+document.querySelectorAll('.jet-card').forEach((b) => {
+  b.addEventListener('click', () => setJet(b.dataset.jet));
+});
+// Lobby menu: HANGAR and SETTINGS open their panel under the menu (tap
+// again to close); opening one closes the other. The waves / controls
+// lines at the bottom hide while a panel is open (see .panel-open).
+function setLobbyPanel(which) {
+  lobbyPanel = lobbyPanel === which ? null : which;
+  hangarPanel.hidden = lobbyPanel !== 'hangar';
+  settingsPanel.style.display = lobbyPanel === 'settings' ? '' : 'none';
+  $('btn-hangar').classList.toggle('active', lobbyPanel === 'hangar');
+  $('btn-lobby-settings').classList.toggle('active', lobbyPanel === 'settings');
+  screens.title.classList.toggle('panel-open', lobbyPanel !== null);
+  audio.click();
+}
+$('btn-hangar').addEventListener('click', () => setLobbyPanel('hangar'));
+$('btn-lobby-settings').addEventListener('click', () => setLobbyPanel('settings'));
 // Antialiasing: AUTO → ON → OFF. Applies at renderer creation, so it
 // takes effect when the game next loads — the note in the panel says so.
 // It persists like the other settings.
