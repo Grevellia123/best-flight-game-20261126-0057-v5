@@ -182,6 +182,152 @@ function drawRadar(el, world) {
   g.beginPath(); g.moveTo(cx, cy - 7); g.lineTo(cx - 5, cy + 5); g.lineTo(cx + 5, cy + 5); g.closePath(); g.fill();
 }
 
+// Cockpit MFD radar: the same enemy picture as the main radar, in
+// cyan — same projection (up = player heading, range 2600), same
+// sweep, but drawn on the dashboard screen instead of the
+// bottom-right corner. The enemy dots keep the main radar's colours
+// (existing target symbology, not new UI).
+function drawMfdRadar(el, world) {
+  const s = setupCanvas(el);
+  if (!s) return;
+  const { g, w, h } = s;
+  const cx = w / 2, cy = h / 2, R = Math.min(w, h) / 2 - 4;
+  g.clearRect(0, 0, w, h);
+  g.strokeStyle = 'rgba(127, 212, 255, 0.55)';
+  g.lineWidth = 1;
+  g.beginPath(); g.arc(cx, cy, R, 0, Math.PI * 2); g.stroke();
+  g.strokeStyle = 'rgba(127, 212, 255, 0.25)';
+  g.beginPath(); g.arc(cx, cy, R * 0.55, 0, Math.PI * 2); g.stroke();
+  g.beginPath(); g.moveTo(cx - R, cy); g.lineTo(cx + R, cy); g.stroke();
+  g.beginPath(); g.moveTo(cx, cy - R); g.lineTo(cx, cy + R); g.stroke();
+  const p = world.player;
+  const range = 2600;
+  // Sweep line.
+  const sa = world.time * 1.4;
+  g.strokeStyle = 'rgba(127, 212, 255, 0.5)';
+  g.beginPath(); g.moveTo(cx, cy); g.lineTo(cx + Math.cos(sa) * R, cy + Math.sin(sa) * R); g.stroke();
+  // Enemies: rotate so up = player heading (same math as drawRadar).
+  const rot = p.yaw;
+  const fx = -Math.sin(rot), fz = -Math.cos(rot);
+  const rx = -fz, rz = fx;
+  for (const e of world.enemies) {
+    const dx = e.x - p.x, dz = e.z - p.z;
+    const dist = Math.hypot(dx, dz);
+    if (dist > range) continue;
+    const sx = (dx * rx + dz * rz) / range * R;
+    const sy = -(dx * fx + dz * fz) / range * R;
+    g.fillStyle = e.ace ? '#ff5040' : '#ff7040';
+    g.beginPath();
+    g.arc(cx + sx, cy + sy, e.ace ? 4.5 : 3.5, 0, Math.PI * 2);
+    g.fill();
+    if (world.lockTarget === e) {
+      g.strokeStyle = '#7fd4ff';
+      g.beginPath(); g.arc(cx + sx, cy + sy, 7, 0, Math.PI * 2); g.stroke();
+    }
+  }
+  // Player wedge.
+  g.fillStyle = '#aee6ff';
+  g.beginPath(); g.moveTo(cx, cy - 7); g.lineTo(cx - 5, cy + 5); g.lineTo(cx + 5, cy + 5); g.closePath(); g.fill();
+}
+
+// Cockpit ADI: an attitude ball — blue sky over brown ground, the
+// horizon tilting with the real roll and sliding with the real pitch.
+// The ball is clipped to a circle; a fixed white aircraft symbol sits
+// in the centre (the ball moves, the symbol doesn't).
+function drawMfdAdi(el, p) {
+  const s = setupCanvas(el);
+  if (!s) return;
+  const { g, w, h } = s;
+  const cx = w / 2, cy = h / 2, R = Math.min(w, h) / 2 - 4;
+  g.clearRect(0, 0, w, h);
+  const pxPerRad = R * 0.9; // 1.1 rad of pitch ≈ the ball's radius
+  g.save();
+  g.beginPath(); g.arc(cx, cy, R, 0, Math.PI * 2); g.clip();
+  g.translate(cx, cy);
+  // Aircraft rolls right → the horizon tilts the other way; nose up →
+  // the horizon slides down.
+  g.rotate(-p.roll);
+  g.translate(0, clamp(p.pitch, -1.1, 1.1) * pxPerRad);
+  g.fillStyle = '#2f7fc9';
+  g.fillRect(-R - 10, -R - 10, 2 * R + 20, R + 10);
+  g.fillStyle = '#8a5a2e';
+  g.fillRect(-R - 10, 0, 2 * R + 20, R + 10);
+  // Pitch ladder: every 10°, out to ±30°. The +10° line sits above the
+  // horizon in ball space (canvas y is down, hence the minus).
+  g.strokeStyle = 'rgba(255, 255, 255, 0.85)';
+  g.lineWidth = 1.5;
+  for (const deg of [-30, -20, -10, 10, 20, 30]) {
+    const y = -(deg * Math.PI / 180) * pxPerRad;
+    const lw = R * (deg % 20 === 0 ? 0.7 : 0.45);
+    g.beginPath(); g.moveTo(-lw, y); g.lineTo(lw, y); g.stroke();
+  }
+  // Horizon line.
+  g.strokeStyle = '#fff';
+  g.lineWidth = 2;
+  g.beginPath(); g.moveTo(-R - 10, 0); g.lineTo(R + 10, 0); g.stroke();
+  g.restore();
+  // Ball outline + fixed aircraft symbol.
+  g.strokeStyle = 'rgba(174, 230, 255, 0.6)';
+  g.lineWidth = 1.5;
+  g.beginPath(); g.arc(cx, cy, R, 0, Math.PI * 2); g.stroke();
+  g.strokeStyle = '#fff';
+  g.lineWidth = 2;
+  g.beginPath();
+  g.moveTo(cx - R * 0.35, cy); g.lineTo(cx - R * 0.12, cy);
+  g.moveTo(cx + R * 0.12, cy); g.lineTo(cx + R * 0.35, cy);
+  g.moveTo(cx, cy); g.lineTo(cx, cy - R * 0.08);
+  g.stroke();
+  g.fillStyle = '#fff';
+  g.beginPath(); g.arc(cx, cy, 2, 0, Math.PI * 2); g.fill();
+}
+
+// Cockpit overlay: the DOM text / bars / MFD canvases inside
+// #cockpit-frame, updated every frame from the live world state.
+// Only called while camMode is 'cockpit' — in chase view the frame
+// is hidden and none of this runs.
+function drawCockpit(els, world) {
+  const p = world.player;
+  const waveName = world.wave > 0 ? CFG.waves[world.wave - 1].name : 'HOSTILES INBOUND';
+  setText(els.cockpitObjTitle, `OBJ: WAVE ${Math.max(1, world.wave)} / ${CFG.waves.length} · ${waveName}`);
+  setText(els.cockpitObjSub, `${world.enemies.length} HOSTILES · KILLS ${world.kills} · SCORE ${world.score} CR`);
+  setText(els.cockpitSysFuelVal, `FUEL ${Math.round(p.fuel)}%`);
+  setBar(els.cockpitSysFuelBar, p.fuel);
+  setText(els.cockpitSysHullVal, `HULL ${Math.round(p.hull)}%`);
+  setBar(els.cockpitSysHullBar, p.hull);
+  els.cockpitAbChip.classList.toggle('on', p.throttle > 0.7);
+  // Ring label: the locked bandit if there is one, else the nearest.
+  let tgt = world.lockTarget, dist = 0;
+  if (tgt) {
+    dist = Math.hypot(tgt.x - p.x, tgt.y - p.y, tgt.z - p.z);
+  } else {
+    let best = Infinity;
+    for (const e of world.enemies) {
+      const d = Math.hypot(e.x - p.x, e.y - p.y, e.z - p.z);
+      if (d < best) { best = d; tgt = e; }
+    }
+    dist = best;
+  }
+  setText(els.cockpitRingLbl, tgt
+    ? (world.lockTarget === tgt && world.lockProgress >= 1
+      ? `◉ ${tgt.name} · LOCK`
+      : `${tgt.name} · ${Math.round(dist)}m`)
+    : 'NO TARGET');
+  setText(els.cockpitSpdVal, `${Math.round(p.speed * 1.944)} KT`);
+  setText(els.cockpitSpdSub, `M ${(p.speed / 343).toFixed(2)}`);
+  setText(els.cockpitAltVal, `${Math.round((p.y - 6) * 3.281)} FT`);
+  setText(els.cockpitAltSub, `FUEL ${Math.round(p.fuel)}%`);
+  setBar(els.cockpitThrBar, p.throttle * 100);
+  setText(els.cockpitThrVal, `${Math.round(p.throttle * 100)}%`);
+  setBar(els.cockpitFuelBar, p.fuel);
+  setText(els.cockpitFuelVal, `${Math.round(p.fuel)}%`);
+  setBar(els.cockpitHeatBar, p.heat);
+  setText(els.cockpitHeatVal, `${Math.round(p.heat)}%`);
+  setText(els.cockpitEngFoot, `MSL ${p.missiles} × · GEAR UP · FLAPS UP · A/B ${p.throttle > 0.7 ? 'ON' : 'OFF'}`);
+  drawMfdRadar(els.mfdRadar, world);
+  drawMfdAdi(els.mfdAdi, p);
+  setText(els.mfdAdiFoot, `PITCH ${Math.round(p.pitch * 57.3)}° · ROLL ${Math.round(p.roll * 57.3)}°`);
+}
+
 export function drawHud(els, world, opts) {
   const p = world.player;
   const speedKt = Math.round(p.speed * 1.944);
@@ -216,6 +362,10 @@ export function drawHud(els, world, opts) {
   setText(els.lockText, world.lockTarget
     ? (world.lockProgress >= 1 ? '◉ LOCK — FIRE!' : `LOCKING ${world.lockTarget.name} ${Math.round(world.lockProgress * 100)}%`)
     : '');
+
+  // Cockpit overlay: objective box, systems box, HUD ring and the
+  // three dashboard screens — only in cockpit mode.
+  if (opts.cockpit) drawCockpit(els, world);
 
   // Overlay canvas: reticle, target boxes, streaks, hit marker.
   // Capped at DPR 1 — it is mostly lines, and a full-screen 2x backing

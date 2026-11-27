@@ -1,5 +1,21 @@
 # TALON STRIKE — Changelog
 
+## v5.25 — 27 November 2026
+
+### A real cockpit, like the reference
+- The cockpit camera now has a full cockpit, like the picture you sent: a curved canopy arch across the top, a big target ring on the canopy with the locked (or nearest) bandit named above it, and speed in knots and altitude in feet beside the ring.
+- The plain dark strip at the bottom is now a dashboard with three live screens: TAC RADAR shows the real bandits around you, with the sweep and the lock ring; ADI / HORIZON is an attitude ball that tilts and slides with your real pitch and roll; ENG / FUEL / SYS shows your real throttle, fuel, gun heat and missiles left.
+- The objective box at the top-left shows the wave, how many hostiles are left, your kills and score. The systems box at the top-right shows fuel and hull bars, and the A/B chip lights up when the throttle is past 0.7.
+- In the cockpit the old speed / altitude tapes, the bottom-left bars and the corner radar hide — the dashboard screens carry them now, so nothing is printed twice. The chase view is untouched: switch back with C or the COCKPIT button and everything is as it was. Checked on a phone-landscape screen too: the dashboard shrinks so the FIRE and MSL buttons still clear it.
+
+## v5.24 — 27 November 2026
+
+### Pressed buttons light up, the moon is a moon, fewer stars, FIRE goes cyan
+- Buttons now light up cyan the moment you press them. The settings buttons (JET, NIGHT MODE, quality) had no press feedback at all, so a tap looked like nothing happened — they all colour up now, along with the menu buttons, the pause and fullscreen buttons and the big buttons. The press colour is stronger everywhere, so you can see it.
+- The FIRE button is cyan now, like the MSL button and the rest of the HUD, instead of red — but it flashes red while you hold it, so the press reads hot.
+- The moon was the same warm orange as the sun because it reused the sun's glow texture — tinting it blue could never fix that, the orange was baked into the texture. The moon now has its own cool white-blue glow, so it reads as a pale moon instead of a second sun. The engine flame keeps its warm glow, as it should.
+- Fewer stars at night: 700 down to 300, so the sky is calmer and the moon stands out.
+
 ## v5.23 — 27 November 2026
 
 ### No more yellow UI, lobby moved right, night mode

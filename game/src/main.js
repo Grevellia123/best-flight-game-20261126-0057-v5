@@ -134,6 +134,21 @@ const els = {
   mslText: $('msl-text'), stallWarn: $('stall-warn'), lockText: $('lock-text'),
   btnFire: $('btn-fire'), btnMsl: $('btn-msl'),
   btnCam: $('btn-cam'), btnPause: $('btn-pause'), btnMute: $('btn-mute'),
+  // Cockpit overlay (inside #cockpit-frame): objective + systems boxes,
+  // HUD ring label + speed / altitude readouts, and the three dashboard
+  // screens (TAC RADAR, ADI, ENG).
+  cockpitObjTitle: $('cockpit-obj-title'), cockpitObjSub: $('cockpit-obj-sub'),
+  cockpitSysFuelVal: $('cockpit-sys-fuel-val'), cockpitSysFuelBar: $('cockpit-sys-fuel-bar'),
+  cockpitSysHullVal: $('cockpit-sys-hull-val'), cockpitSysHullBar: $('cockpit-sys-hull-bar'),
+  cockpitAbChip: $('cockpit-ab-chip'),
+  cockpitRingLbl: $('cockpit-ring-lbl'),
+  cockpitSpdVal: $('cockpit-spd-val'), cockpitSpdSub: $('cockpit-spd-sub'),
+  cockpitAltVal: $('cockpit-alt-val'), cockpitAltSub: $('cockpit-alt-sub'),
+  mfdRadar: $('mfd-radar'), mfdAdi: $('mfd-adi'), mfdAdiFoot: $('mfd-adi-foot'),
+  cockpitThrBar: $('cockpit-thr-bar'), cockpitThrVal: $('cockpit-thr-val'),
+  cockpitFuelBar: $('cockpit-fuel-bar'), cockpitFuelVal: $('cockpit-fuel-val'),
+  cockpitHeatBar: $('cockpit-heat-bar'), cockpitHeatVal: $('cockpit-heat-val'),
+  cockpitEngFoot: $('cockpit-eng-foot'),
 };
 const input = createInput(container, els);
 if (isTouch) document.body.classList.add('touch');
@@ -222,6 +237,9 @@ function toggleCam() {
   settings.camMode = settings.camMode === 'chase' ? 'cockpit' : 'chase';
   saveSettings();
   $('cockpit-frame').style.display = settings.camMode === 'cockpit' ? 'block' : 'none';
+  // body.cockpit hides the chase HUD pieces the cockpit replaces
+  // (tapes, bars, radar, wave-sub, killfeed) — see index.html.
+  document.body.classList.toggle('cockpit', settings.camMode === 'cockpit');
   $('btn-cam').textContent = settings.camMode === 'cockpit' ? 'CHASE' : 'COCKPIT';
   audio.click();
 }
@@ -509,6 +527,7 @@ updateNightUI();
 $('cam-setting').textContent = `CAMERA: ${settings.camMode.toUpperCase()}`;
 $('btn-cam').textContent = settings.camMode === 'cockpit' ? 'CHASE' : 'COCKPIT';
 if (settings.camMode === 'cockpit') $('cockpit-frame').style.display = 'block';
+document.body.classList.toggle('cockpit', settings.camMode === 'cockpit');
 
 document.addEventListener('visibilitychange', () => {
   if (document.hidden && world.screen === 'play' && !world.paused) togglePause();
@@ -520,6 +539,7 @@ if (SHOT) {
   shotInfo = stageShot(world, SHOT);
   settings.camMode = shotInfo.camMode;
   $('cockpit-frame').style.display = settings.camMode === 'cockpit' ? 'block' : 'none';
+  document.body.classList.toggle('cockpit', settings.camMode === 'cockpit');
   $('btn-cam').textContent = settings.camMode === 'cockpit' ? 'CHASE' : 'COCKPIT';
   if (SHOT === 'cover') { showScreen('title'); audio.setMood('title'); }
   else if (SHOT === 'victory') { fillDebrief('win'); showScreen('win'); audio.setMood('win'); }
@@ -714,6 +734,7 @@ function frame(now) {
       project: (x, y, z) => scene.project(x, y, z),
       streaks: CFG.quality[settings.quality].streaks,
       hitFlash,
+      cockpit: settings.camMode === 'cockpit',
     });
   }
 }

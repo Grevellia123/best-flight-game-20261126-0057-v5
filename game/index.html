@@ -106,7 +106,7 @@
     font: 700 12px ui-monospace, monospace; letter-spacing: 0.06em;
     min-width: 44px; min-height: 44px; padding: 6px 12px; border-radius: 6px;
   }
-  .hud-btn:active { background: rgba(140, 220, 255, 0.25); }
+  .hud-btn:active { background: rgba(140, 220, 255, 0.45); }
   /* The three square icon buttons are exactly 44px wide — the same
      width as the tapes — so the ALT tape lines up with the fullscreen
      button above it. Without a fixed width the emoji + side padding
@@ -127,14 +127,120 @@
   #cockpit-frame .strut { position: absolute; background: rgba(10, 18, 26, 0.95); }
   #cockpit-frame .strut.l { left: 30%; top: 0; bottom: 0; width: 10px; transform: skewX(14deg); }
   #cockpit-frame .strut.r { right: 30%; top: 0; bottom: 0; width: 10px; transform: skewX(-14deg); }
+  /* Canopy arch: the big curved frame across the top, like the
+     reference cockpit — dark with a faint cyan edge. The struts
+     are the existing frame; the arch completes the canopy. */
+  #cockpit-frame .arch { position: absolute; inset: 0; width: 100%; height: 100%; }
+  /* Objective box, top-left: wave, hostiles left, kills and score.
+     It carries the same facts as the wave pill + wave-sub, so those
+     two hide in cockpit mode (see body.cockpit below) instead of
+     printing the same line twice. */
+  .cockpit-obj { position: absolute; top: calc(64px + env(safe-area-inset-top, 0px)); left: calc(12px + env(safe-area-inset-left, 0px)); background: rgba(8, 18, 26, 0.85); border: 1px solid var(--panel-line); border-radius: 4px; padding: 10px 14px; font-size: 12px; letter-spacing: 0.12em; line-height: 1.7; }
+  .cockpit-obj b { color: #fff; }
+  /* Systems box, top-right: fuel + hull bars and the GEAR / FLAP /
+     BRK / A-B chips. A/B lights up when the throttle is past 0.7;
+     the rest stay dim — TALON has no gear or flaps to move. */
+  .cockpit-sys { position: absolute; top: calc(64px + env(safe-area-inset-top, 0px)); right: calc(12px + env(safe-area-inset-right, 0px)); background: rgba(8, 18, 26, 0.85); border: 1px solid var(--panel-line); border-radius: 4px; padding: 10px 14px; font-size: 12px; letter-spacing: 0.1em; }
+  .cockpit-sys .row { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+  .cockpit-sys .bar { flex: 0 0 150px; width: 150px; height: 8px; background: rgba(255,255,255,0.12); border-radius: 2px; overflow: hidden; }
+  .cockpit-sys .bar i { display: block; height: 100%; }
+  .cockpit-sys .chips { display: flex; gap: 6px; margin-top: 8px; }
+  .cockpit-sys .chips span { border: 1px solid rgba(140,220,255,0.4); border-radius: 3px; padding: 3px 8px; font-size: 11px; color: rgba(174,230,255,0.6); }
+  .cockpit-sys .chips span.on { background: rgba(127,212,255,0.3); color: #fff; border-color: var(--accent); }
+  /* HUD target ring: the big circle on the canopy around the small
+     reticle, with the locked (or nearest) bandit named above it and
+     speed / altitude beside it — the reference cockpit's layout. */
+  .cockpit-ring { position: absolute; left: 50%; top: 50%; width: 190px; height: 190px; margin: -95px 0 0 -95px; border: 2px solid rgba(174,230,255,0.9); border-radius: 50%; }
+  .cockpit-ring .tick { position: absolute; background: rgba(174,230,255,0.9); }
+  .cockpit-ring .t { left: 94px; top: -14px; width: 2px; height: 12px; }
+  .cockpit-ring .b { left: 94px; bottom: -14px; width: 2px; height: 12px; }
+  .cockpit-ring .l { left: -14px; top: 94px; width: 12px; height: 2px; }
+  .cockpit-ring .r { right: -14px; top: 94px; width: 12px; height: 2px; }
+  .cockpit-ring-lbl { position: absolute; left: 50%; top: -34px; transform: translateX(-50%); font-size: 13px; letter-spacing: 0.14em; color: var(--hud); white-space: nowrap; text-shadow: 0 1px 6px rgba(0,0,0,0.8); }
+  .cockpit-spd { position: absolute; right: calc(50% + 120px); top: 46%; font-size: 20px; font-weight: 700; letter-spacing: 0.08em; color: #fff; text-shadow: 0 1px 6px rgba(0,0,0,0.8); text-align: right; }
+  .cockpit-alt { position: absolute; left: calc(50% + 120px); top: 46%; font-size: 20px; font-weight: 700; letter-spacing: 0.08em; color: #fff; text-shadow: 0 1px 6px rgba(0,0,0,0.8); }
+  .cockpit-spd small, .cockpit-alt small { display: block; font-size: 11px; color: var(--hud); letter-spacing: 0.2em; margin-top: 4px; font-weight: 600; }
+  /* Dashboard: three live screens — TAC RADAR, ADI / HORIZON and
+     ENG / FUEL / SYS — instead of the old plain strip. The MFD
+     canvases are drawn per frame in render.js; the ENG rows are DOM
+     bars updated the same way. */
   #cockpit-frame .dash {
-    position: absolute; left: 0; right: 0; bottom: 0; height: 15%;
-    background: linear-gradient(to top, #0a1218 55%, #131e26 100%);
+    position: absolute; left: 0; right: 0; bottom: 0; height: 208px;
+    background: linear-gradient(to top, #0a1218 60%, #131e26);
     border-top: 2px solid #26333d;
+    display: flex; flex-wrap: wrap; gap: 12px; padding: 10px 14px 8px;
   }
-  #cockpit-frame .dash::after {
-    content: 'T-7 TALON · TALON-1'; position: absolute; left: 50%; top: 38%; transform: translateX(-50%);
-    font-size: 11px; letter-spacing: 0.3em; color: rgba(174, 230, 255, 0.5);
+  #cockpit-frame .mfd { flex: 1 1 0; min-width: 0; min-height: 0; overflow: hidden; background: #04121a; border: 1px solid var(--panel-line); border-radius: 4px; padding: 8px 12px; display: flex; flex-direction: column; }
+  #cockpit-frame .mfd h3 { font-size: 11px; letter-spacing: 0.3em; color: var(--hud); border-bottom: 1px solid rgba(140,220,255,0.25); padding-bottom: 6px; margin-bottom: 6px; font-weight: 700; }
+  #cockpit-frame .mfd h3 .mfd-short, #cockpit-frame .mfd .mfd-short { display: none; }
+  #cockpit-frame .mfd-canvas { position: relative; flex: 1; min-height: 0; }
+  #cockpit-frame .mfd canvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+  #cockpit-frame .mfd-foot { font-size: 11px; letter-spacing: 0.14em; color: rgba(174,230,255,0.75); padding-top: 5px; }
+  #cockpit-frame .mfd-eng .erow { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; font-size: 13px; letter-spacing: 0.08em; }
+  #cockpit-frame .mfd-eng .erow b { width: 88px; font-weight: 700; }
+  #cockpit-frame .mfd-eng .bar { flex: 1; height: 12px; background: rgba(255,255,255,0.1); border-radius: 2px; overflow: hidden; }
+  #cockpit-frame .mfd-eng .bar i { display: block; height: 100%; }
+  #cockpit-frame .mfd-eng .val { width: 52px; text-align: right; color: #fff; }
+  #cockpit-frame .mfd-eng .mfd-foot { margin-top: auto; }
+  #cockpit-frame .dash-label { flex: 1 1 100%; text-align: center; font-size: 10px; letter-spacing: 0.3em; color: rgba(174,230,255,0.5); }
+  /* In cockpit mode the dashboard screens carry the radar, the bars
+     and the tapes, so the chase HUD pieces they duplicate hide — the
+     wave pill stays, the wave-sub is replaced by the objective box,
+     and the killfeed would print over it. The compass, message
+     banner, lock text, stall warning and reticle stay. */
+  body.cockpit #ias-tape, body.cockpit #alt-tape, body.cockpit #bars,
+  body.cockpit #radar, body.cockpit #wave-sub, body.cockpit #killfeed { display: none; }
+  /* Short screens (phone landscape): the dash shrinks to 118px so
+     the FIRE / MSL buttons (bottom 118px) clear it, and the ring
+     shrinks so the speed / altitude readouts still fit beside it. */
+  @media (max-height: 500px) {
+    #cockpit-frame .dash { height: 118px; gap: 8px; padding: 6px 10px 5px; }
+    #cockpit-frame .mfd { padding: 6px 8px; }
+    #cockpit-frame .mfd h3 { font-size: 9px; padding-bottom: 4px; margin-bottom: 4px; }
+    #cockpit-frame .mfd-foot { font-size: 9px; padding-top: 3px; }
+    #cockpit-frame .mfd-eng .erow { font-size: 11px; margin-bottom: 6px; }
+    #cockpit-frame .mfd-eng .erow b { width: 64px; }
+    #cockpit-frame .mfd-eng .bar { height: 9px; }
+    #cockpit-frame .mfd-eng .val { width: 40px; }
+    #cockpit-frame .dash-label { font-size: 9px; }
+    .cockpit-ring { width: 140px; height: 140px; margin: -70px 0 0 -70px; }
+    .cockpit-ring .t { left: 69px; } .cockpit-ring .b { left: 69px; }
+    .cockpit-ring .l { top: 69px; } .cockpit-ring .r { top: 69px; }
+    .cockpit-ring-lbl { font-size: 11px; top: -30px; }
+    .cockpit-spd { right: calc(50% + 90px); font-size: 15px; }
+    .cockpit-alt { left: calc(50% + 90px); font-size: 15px; }
+    .cockpit-obj, .cockpit-sys { top: calc(60px + env(safe-area-inset-top, 0px)); font-size: 11px; padding: 8px 10px; }
+    .cockpit-sys .bar { flex-basis: 110px; width: 110px; }
+  }
+  /* Very narrow portrait: the top strip wraps to three rows, so the
+     objective box drops below it and the systems box hides — its
+     fuel / hull still show in the ENG screen. The MFD panels are
+     only ~87px wide here, so the headers shorten to one word
+     (RADAR / ADI / ENG), the ENG bars hide (values stay), and the
+     dash label hides — otherwise the headers wrap to three lines
+     and the panels spill past the bottom of the screen. */
+  @media (max-width: 480px) {
+    .cockpit-obj { top: calc(152px + env(safe-area-inset-top, 0px)); }
+    .cockpit-sys { display: none; }
+    .cockpit-ring { width: 140px; height: 140px; margin: -70px 0 0 -70px; }
+    .cockpit-ring .t { left: 69px; } .cockpit-ring .b { left: 69px; }
+    .cockpit-ring .l { top: 69px; } .cockpit-ring .r { top: 69px; }
+    .cockpit-ring-lbl { font-size: 11px; top: -30px; }
+    .cockpit-spd { right: calc(50% + 85px); font-size: 15px; }
+    .cockpit-alt { left: calc(50% + 85px); font-size: 15px; }
+    #cockpit-frame .dash { height: 150px; }
+    #cockpit-frame .mfd h3 { font-size: 9px; letter-spacing: 0.12em; white-space: nowrap; }
+    #cockpit-frame .mfd .mfd-long { display: none; }
+    /* The base rule hides .mfd-short inside h3 at (1,2,1), so this
+       needs the h3 in the selector too — a bare (1,2,0) rule loses
+       to it and the header comes out empty. */
+    #cockpit-frame .mfd h3 .mfd-short, #cockpit-frame .mfd .mfd-short { display: inline; }
+    #cockpit-frame .mfd-eng .erow { font-size: 10px; gap: 6px; margin-bottom: 5px; }
+    #cockpit-frame .mfd-eng .erow b { width: 30px; }
+    #cockpit-frame .mfd-eng .bar { display: none; }
+    #cockpit-frame .mfd-eng .val { width: 28px; }
+    #cockpit-frame .mfd-eng .mfd-foot { display: none; }
+    #cockpit-frame .mfd-foot { font-size: 9px; }
   }
 
   /* ---------- Touch controls ---------- */
@@ -147,8 +253,12 @@
     background: rgba(8, 18, 26, 0.28); border: 1px solid rgba(140, 220, 255, 0.35);
     color: var(--hud); font: 700 13px ui-monospace, monospace; letter-spacing: 0.04em;
   }
-  .touch-btn:active { background: rgba(140, 220, 255, 0.35); }
-  #btn-fire { right: calc(18px + env(safe-area-inset-right, 0px)); bottom: calc(180px + env(safe-area-inset-bottom, 0px)); width: 84px; height: 84px; border-color: var(--red); color: #ffb0a0; }
+  .touch-btn:active { background: rgba(140, 220, 255, 0.5); }
+  #btn-fire { right: calc(18px + env(safe-area-inset-right, 0px)); bottom: calc(180px + env(safe-area-inset-bottom, 0px)); width: 84px; height: 84px; border-color: var(--accent); color: var(--hud); }
+  /* FIRE is cyan at rest like the rest of the HUD, but flashes red
+     while held — the press is the moment you are firing, so it reads
+     hot. The ID selector beats the generic .touch-btn:active cyan. */
+  #btn-fire:active { background: rgba(255, 80, 64, 0.5); border-color: var(--red); color: #fff; }
   #btn-msl { right: calc(116px + env(safe-area-inset-right, 0px)); bottom: calc(196px + env(safe-area-inset-bottom, 0px)); width: 64px; height: 64px; border-color: var(--accent); color: var(--hud); }
   .touch-hint {
     position: absolute; left: 50%; bottom: calc(8px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%);
@@ -191,12 +301,13 @@
     background: linear-gradient(180deg, #5cb8ff, #2a7fff); border: none; border-radius: 8px;
     padding: 16px 28px; min-height: 56px; box-shadow: 0 6px 24px rgba(42, 127, 255, 0.35);
   }
-  .big-btn:active { transform: translateY(1px); }
+  .big-btn:active { transform: translateY(1px); filter: brightness(1.25); }
   .ghost-btn {
     pointer-events: auto; cursor: pointer; font: 700 13px ui-monospace, monospace; letter-spacing: 0.1em;
     color: var(--hud); background: transparent; border: 1px solid var(--panel-line); border-radius: 6px;
     padding: 10px 22px; min-height: 44px;
   }
+  .ghost-btn:active { background: rgba(127,212,255,0.35); border-color: var(--accent); }
   .controls { font-size: 11px; line-height: 1.9; color: var(--hud-dim); letter-spacing: 0.04em; max-width: 560px; }
   .controls b { color: var(--hud); }
   .settings-row { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; }
@@ -215,7 +326,7 @@
   .panel-head { display: flex; align-items: center; gap: 8px; }
   .panel-head .settings-label, .panel-head .settings-title { flex: 1; }
   .panel-close { pointer-events: auto; cursor: pointer; flex-shrink: 0; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; font: 700 15px ui-monospace, monospace; color: var(--hud); background: transparent; border: 1px solid rgba(255,255,255,0.25); border-radius: 2px; }
-  .panel-close:active { background: rgba(140,220,255,0.25); }
+  .panel-close:active { background: rgba(140,220,255,0.45); }
   .settings-section { display: flex; flex-direction: column; gap: 8px; }
   .settings-label { font-size: 11px; letter-spacing: 0.2em; color: var(--hud-dim); font-weight: 700; }
   .slider-row { display: flex; align-items: center; gap: 10px; }
@@ -229,6 +340,11 @@
     color: var(--hud); background: var(--panel); border: 1px solid var(--panel-line); border-radius: 6px;
     padding: 10px 14px; min-height: 44px;
   }
+  /* Pressed buttons light up cyan while held — the settings buttons
+     (JET, NIGHT MODE, quality) had no press feedback at all, so a tap
+     looked like nothing happened. Jet cards and quality buttons are
+     .set-btn too, so this covers them. */
+  .set-btn:active { background: rgba(127,212,255,0.45); border-color: var(--accent); }
   .end-title { font-size: clamp(34px, 7vw, 64px); letter-spacing: 0.06em; font-weight: 700; }
   .end-title.win { color: #7be495; text-shadow: 0 0 28px rgba(123, 228, 149, 0.5); }
   .end-title.lose { color: var(--red); text-shadow: 0 0 28px rgba(255, 80, 64, 0.5); }
@@ -368,7 +484,7 @@
     color: #fff; background: rgba(28,42,56,0.62);
     border: 1px solid rgba(255,255,255,0.28); border-radius: 2px;
   }
-  .menu-btn:active { background: rgba(140,220,255,0.25); }
+  .menu-btn:active { background: rgba(140,220,255,0.45); }
   .menu-btn.active { border-color: var(--accent); background: rgba(127,212,255,0.22); color: var(--hud); }
   /* PLAY is the same dark translucent button as HANGAR / SETTINGS —
      no gold: the yellow PLAY stood out from the reference menu, and
@@ -441,7 +557,34 @@
 </head>
 <body>
 <div id="game"></div>
-<div id="cockpit-frame"><div class="strut l"></div><div class="strut r"></div><div class="dash"></div></div>
+<div id="cockpit-frame">
+  <svg class="arch" viewBox="0 0 1920 880" preserveAspectRatio="none" aria-hidden="true">
+    <path d="M -40 880 L -40 430 Q 960 -140 1960 430 L 1960 880" fill="none" stroke="#0a1218" stroke-width="36"/>
+    <path d="M -40 880 L -40 430 Q 960 -140 1960 430 L 1960 880" fill="none" stroke="rgba(140,220,255,0.22)" stroke-width="2" transform="translate(0,26)"/>
+  </svg>
+  <div class="strut l"></div><div class="strut r"></div>
+  <div class="cockpit-obj"><b id="cockpit-obj-title">OBJ: WAVE 1/5 · FIRST CONTACT</b><br><span id="cockpit-obj-sub">3 HOSTILES · KILLS 0 · SCORE 0 CR</span></div>
+  <div class="cockpit-sys">
+    <div class="row"><span id="cockpit-sys-fuel-val">FUEL 100%</span><span class="bar"><i id="cockpit-sys-fuel-bar" style="width:100%;background:#37b6e8"></i></span></div>
+    <div class="row"><span id="cockpit-sys-hull-val">HULL 100%</span><span class="bar"><i id="cockpit-sys-hull-bar" style="width:100%;background:#58d68a"></i></span></div>
+    <div class="chips"><span>GEAR</span><span>FLAP</span><span>BRK</span><span id="cockpit-ab-chip">A/B</span></div>
+  </div>
+  <div class="cockpit-ring"><div class="tick t"></div><div class="tick b"></div><div class="tick l"></div><div class="tick r"></div><div class="cockpit-ring-lbl" id="cockpit-ring-lbl">NO TARGET</div></div>
+  <div class="cockpit-spd"><span id="cockpit-spd-val">377 KT</span><small id="cockpit-spd-sub">M 0.59</small></div>
+  <div class="cockpit-alt"><span id="cockpit-alt-val">1686 FT</span><small id="cockpit-alt-sub">FUEL 100%</small></div>
+  <div class="dash">
+    <div class="mfd"><h3><span class="mfd-long">TAC RADAR · 12 NM</span><span class="mfd-short">RADAR</span></h3><div class="mfd-canvas"><canvas id="mfd-radar"></canvas></div></div>
+    <div class="mfd"><h3><span class="mfd-long">ADI / HORIZON</span><span class="mfd-short">ADI</span></h3><div class="mfd-canvas"><canvas id="mfd-adi"></canvas></div><div class="mfd-foot" id="mfd-adi-foot">PITCH 0° · ROLL 0°</div></div>
+    <div class="mfd mfd-eng">
+      <h3><span class="mfd-long">ENG / FUEL / SYS</span><span class="mfd-short">ENG</span></h3>
+      <div class="erow"><b>THR</b><span class="bar"><i id="cockpit-thr-bar" style="width:62%;background:#7fd4ff"></i></span><span class="val" id="cockpit-thr-val">62%</span></div>
+      <div class="erow"><b>FUEL</b><span class="bar"><i id="cockpit-fuel-bar" style="width:100%;background:#37b6e8"></i></span><span class="val" id="cockpit-fuel-val">100%</span></div>
+      <div class="erow"><b><span class="mfd-long">GUN HEAT</span><span class="mfd-short">HEAT</span></b><span class="bar"><i id="cockpit-heat-bar" style="width:0%;background:#58d68a"></i></span><span class="val" id="cockpit-heat-val">0%</span></div>
+      <div class="mfd-foot" id="cockpit-eng-foot">MSL 6 × · GEAR UP · FLAPS UP · A/B OFF</div>
+    </div>
+    <div class="dash-label">T-7 TALON · TALON-1</div>
+  </div>
+</div>
 
 <div id="hud">
   <canvas id="overlay"></canvas>

@@ -57,6 +57,23 @@ function glowTexture() {
   return new THREE.CanvasTexture(c);
 }
 
+// Moon glow: the same radial falloff as the sun's glow, but cool
+// white-blue. The moon was reusing the sun's warm orange glowTexture,
+// and the sprite colour only multiplies the texture — so even tinted
+// blue the moon still glowed orange like a second sun. The moon gets
+// its own texture, swapped in by setNightMode.
+function moonTexture() {
+  const c = document.createElement('canvas');
+  c.width = 64; c.height = 64;
+  const g = c.getContext('2d');
+  const grad = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+  grad.addColorStop(0, 'rgba(235,242,255,1)');
+  grad.addColorStop(0.35, 'rgba(190,210,245,0.55)');
+  grad.addColorStop(1, 'rgba(150,180,230,0)');
+  g.fillStyle = grad; g.fillRect(0, 0, 64, 64);
+  return new THREE.CanvasTexture(c);
+}
+
 // A fighter jet built from primitives, nose pointing along local -z.
 function buildJet({ body, accent, canopy, scale = 1 }) {
   const g = new THREE.Group();
@@ -321,6 +338,7 @@ export function createScene(container, qualityName, aaSetting = 'auto', jetModel
   // Sun disc + glow. Colour > 1: the sun is HDR so it blooms, and the
   // god-ray pass reads it out of the bloom texture.
   const glowTex = glowTexture();
+  const moonTex = moonTexture();
   const sunSprite = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, transparent: true, opacity: 0.95, depthWrite: false, fog: false }));
   sunSprite.material.color.setRGB(2.2, 1.7, 1.2);
   sunSprite.position.copy(sunDir).multiplyScalar(8800);
@@ -331,7 +349,7 @@ export function createScene(container, qualityName, aaSetting = 'auto', jetModel
   // They follow the player like the sky dome (see sync()).
   const starGeo = new THREE.BufferGeometry();
   {
-    const N = 700, pos = new Float32Array(N * 3);
+    const N = 300, pos = new Float32Array(N * 3);
     const srng = mulberry32(1234);
     for (let i = 0; i < N; i++) {
       const a = srng() * Math.PI * 2, y = srng() * 0.95 + 0.05;
@@ -525,7 +543,7 @@ export function createScene(container, qualityName, aaSetting = 'auto', jetModel
   const NIGHT = {
     sky: [0x050914, 0x0a1a33, 0x131c2e], fog: 0x070d1a,
     sun: [0x8fb4ff, 0.7], hemi: [0x2a3f5f, 0x0d1a12, 0.35],
-    moon: [1.1, 1.25, 1.5], moonScale: 520, moonOpacity: 0.9,
+    moon: [1.0, 1.1, 1.3], moonScale: 520, moonOpacity: 0.9,
     cloudOpacity: 0.3, cloudColor: 0x5a6f8a,
   };
   handle.night = false;
@@ -539,6 +557,10 @@ export function createScene(container, qualityName, aaSetting = 'auto', jetModel
     sun.color.setHex(m.sun[0]); sun.intensity = m.sun[1];
     hemi.color.setHex(m.hemi[0]); hemi.groundColor.setHex(m.hemi[1]); hemi.intensity = m.hemi[2];
     sunSprite.material.color.setRGB(m.moon[0], m.moon[1], m.moon[2]);
+    // The moon gets its own cool texture — the sun's glow is warm orange
+    // and tinting it could never make it look like a moon.
+    sunSprite.material.map = on ? moonTex : glowTex;
+    sunSprite.material.needsUpdate = true;
     sunSprite.scale.set(m.moonScale, m.moonScale, 1);
     sunSprite.material.opacity = m.moonOpacity;
     clouds.forEach((c) => { c.material.opacity = c.userData.baseOpacity * m.cloudOpacity; c.material.color.setHex(m.cloudColor); });
