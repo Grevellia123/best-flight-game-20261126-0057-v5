@@ -1,5 +1,13 @@
 # TALON STRIKE — Changelog
 
+## v5.36 — 28 November 2026
+
+### FPS indicator, lens flare, and stronger god rays on medium
+- A small FPS readout now sits under the top-right buttons in flight — green at 50 and up, amber at 30–49, red below 30.
+- A lens flare appears when you face the sun: a bright core and streak on the sun, with rings and a dot mirrored across the screen. It is a few small shapes, not a screen wash, and it works on every graphics setting.
+- God rays on medium graphics are stronger now (they were too faint to see). Note: the rays are part of post-processing, so if the frame rate dips the game still sheds them first to protect the frame rate — the lens flare stays either way.
+- The night aurora is unchanged — it shows at night on every graphics setting, in the northern sky, so turn north to see it.
+
 ## v5.35 — 28 November 2026
 
 ### Sun glare removed

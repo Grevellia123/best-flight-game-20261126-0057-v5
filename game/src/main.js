@@ -132,6 +132,7 @@ const els = {
   hullBar: $('hull-bar'), hullText: $('hull-text'),
   heatBar: $('heat-bar'), heatText: $('heat-text'),
   mslText: $('msl-text'), stallWarn: $('stall-warn'), lockText: $('lock-text'),
+  fpsText: $('fps-text'),
   btnFire: $('btn-fire'), btnMsl: $('btn-msl'),
   btnCam: $('btn-cam'), btnPause: $('btn-pause'), btnMute: $('btn-mute'),
   // Cockpit overlay (inside #cockpit-frame): objective line, HUD ring
@@ -147,6 +148,15 @@ const els = {
   cockpitHeatBar: $('cockpit-heat-bar'), cockpitHeatVal: $('cockpit-heat-val'),
   cockpitEngFoot: $('cockpit-eng-foot'),
 };
+// Lens-flare parts: element, position factor along the sun-to-centre axis
+// (1 = on the sun, negative = mirrored across the centre), peak opacity.
+const flareParts = [
+  { el: document.querySelector('.lf-core'), f: 1, max: 0.9 },
+  { el: document.querySelector('.lf-streak'), f: 1, max: 0.4 },
+  { el: document.querySelector('.lf-ring-a'), f: -0.45, max: 0.5 },
+  { el: document.querySelector('.lf-ring-b'), f: -0.9, max: 0.55 },
+  { el: document.querySelector('.lf-dot'), f: -1.4, max: 0.7 },
+];
 const input = createInput(container, els);
 if (isTouch) document.body.classList.add('touch');
 
@@ -622,7 +632,7 @@ if (AUTOPILOT && !SHOT) {
 
 // ---- FPS meter + auto step-down ----------------------------------------------
 // NOTE: fps is measured from the REAL frame delta, not the clamped dt.
-let fpsAcc = 0, fpsN = 0, fpsAvg = 60, lowTime = 0;
+let fpsAcc = 0, fpsN = 0, fpsAvg = 60, lowTime = 0, lastFpsUi = 0;
 const QUALITY_ORDER = ['low', 'medium', 'high'];
 function fpsTick(realDt) {
   if (realDt <= 0) return;
@@ -748,6 +758,15 @@ function frame(now) {
   let dt = Math.min(realDt, 0.05);
   last = now;
   fpsTick(realDt);
+  // FPS indicator: refresh ~4x a second; green / amber / red by value.
+  if (now - lastFpsUi > 250) {
+    lastFpsUi = now;
+    const f = Math.round(fpsAvg);
+    if (els.fpsText) {
+      els.fpsText.textContent = `${f} FPS`;
+      els.fpsText.style.color = f >= 50 ? '#7dff9e' : f >= 30 ? '#ffcf5e' : '#ff5040';
+    }
+  }
   hitFlash = Math.max(0, hitFlash - dt);
 
   // KeyM works on every screen — the old code only consumed muteToggle
@@ -796,6 +815,20 @@ function frame(now) {
   updateEnemyDoppler();
   drainEvents();
   scene.sync(world, dt, settings.camMode, world.time);
+  // Lens flare: discrete sun artifacts along the sun-to-centre axis.
+  // f = 1 sits on the sun; negative f mirrors across the screen centre.
+  const sf = scene.sunFlare;
+  if (sf) {
+    const vw = window.innerWidth, vh = window.innerHeight;
+    const cx = vw / 2, cy = vh / 2;
+    const sx = sf.x * vw, sy = (1 - sf.y) * vh;
+    for (const p of flareParts) {
+      const x = cx + (sx - cx) * p.f, y = cy + (sy - cy) * p.f;
+      p.el.style.left = `${x.toFixed(1)}px`;
+      p.el.style.top = `${y.toFixed(1)}px`;
+      p.el.style.opacity = (sf.s * p.max).toFixed(3);
+    }
+  }
   if (world.screen === 'play' || SHOT === 'combat' || SHOT === 'lock') {
     drawHud(els, world, {
       project: (x, y, z) => scene.project(x, y, z),

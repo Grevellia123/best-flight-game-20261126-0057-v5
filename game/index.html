@@ -100,6 +100,26 @@
     font-size: 13px; font-weight: 700; letter-spacing: 0.12em; color: var(--accent);
     text-shadow: 0 1px 6px rgba(0,0,0,0.8);
   }
+  /* FPS indicator: tiny readout under the top-right buttons, in play only. */
+  #fps-text {
+    position: absolute; top: 64px; right: calc(12px + env(safe-area-inset-right, 0px));
+    font-size: 11px; font-weight: 700; letter-spacing: 0.08em; color: #7dff9e;
+    text-shadow: 0 1px 4px rgba(0,0,0,0.8);
+  }
+  /* Lens flare: discrete sun artifacts (core, streak, rings, dot) along
+     the sun-to-centre axis. Above the 3D canvas (z 0), below the HUD
+     (z 5) — unlike the cancelled glare wash, these are small shapes, not
+     a screen-wide veil. Positions are set from JS every frame. */
+  #lens-flare { position: fixed; inset: 0; z-index: 3; pointer-events: none; }
+  #lens-flare .lf { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); opacity: 0; }
+  .lf-core { width: 110px; height: 110px; border-radius: 50%;
+    background: radial-gradient(circle, rgba(255,255,240,0.95) 0%, rgba(255,220,150,0.45) 40%, rgba(255,200,120,0) 70%); }
+  .lf-streak { width: 300px; height: 4px; border-radius: 2px;
+    background: linear-gradient(90deg, transparent, rgba(255,240,200,0.9), transparent); }
+  .lf-ring-a { width: 150px; height: 150px; border-radius: 50%; border: 2px solid rgba(170,225,255,0.85); box-shadow: 0 0 12px rgba(140,210,255,0.4) inset; }
+  .lf-ring-b { width: 74px; height: 74px; border-radius: 50%; border: 2px solid rgba(255,210,140,0.8); }
+  .lf-dot { width: 30px; height: 30px; border-radius: 50%;
+    background: radial-gradient(circle, rgba(190,235,255,0.95), rgba(140,200,255,0) 70%); }
   .hud-btn {
     pointer-events: auto; cursor: pointer;
     background: rgba(8, 18, 26, 0.28); border: 1px solid rgba(140, 220, 255, 0.28); color: var(--hud);
@@ -558,6 +578,13 @@
 </head>
 <body>
 <div id="game"></div>
+<div id="lens-flare">
+  <div class="lf lf-core"></div>
+  <div class="lf lf-streak"></div>
+  <div class="lf lf-ring-a"></div>
+  <div class="lf lf-ring-b"></div>
+  <div class="lf lf-dot"></div>
+</div>
 <div id="cockpit-frame">
   <svg class="arch" viewBox="0 0 1920 880" preserveAspectRatio="none" aria-hidden="true">
     <path d="M -40 880 L -40 430 Q 960 -140 1960 430 L 1960 880" fill="none" stroke="#0a1218" stroke-width="36"/>
@@ -595,6 +622,7 @@
     </div>
   </div>
   <div id="wave-sub" class="panel"></div>
+  <div id="fps-text"></div>
   <div id="killfeed"></div>
   <div id="msg" class="panel"></div>
   <canvas id="ias-tape"></canvas>

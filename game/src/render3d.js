@@ -865,6 +865,14 @@ export function createScene(container, qualityName, aaSetting = 'auto', jetModel
     const sunUV = { x: _ndc.x * 0.5 + 0.5, y: _ndc.y * 0.5 + 0.5 };
     const off = Math.max(Math.abs(sunUV.x - 0.5), Math.abs(sunUV.y - 0.5)) * 2;
     const sunVis = sstep(0.05, 0.35, facing) * (1 - sstep(0.7, 1.25, off));
+    // Lens flare: sun position + strength for the DOM flare overlay
+    // (main.js places the artifacts). Day + in flight only. Cheap DOM,
+    // so it works on every graphics setting, unlike the post-process
+    // god rays that vanish when post is shed.
+    const sunFlareS = world.screen === 'play' && !handle.night
+      ? sstep(0.7, 0.95, facing) * (1 - sstep(0.7, 1.25, off))
+      : 0;
+    handle.sunFlare = { x: sunUV.x, y: sunUV.y, s: sunFlareS };
     // ---- Frustum culling: do not render what the camera cannot see ----
     // Three.js already culls single meshes, but whole objects were still
     // drawn when off-screen: the terrain used to be one mesh (fixed by

@@ -27,7 +27,7 @@ const LEVELS = {
   // bloom: additive strength. threshold/knee: linear-space bright-pass.
   // blurIters: separable blur passes (H+V each). rays: god-ray strength.
   // taps: radial march samples toward the sun.
-  1: { bloom: 0.38, threshold: 1.0, knee: 0.4, blurIters: 1, rays: 0.4, taps: 6 },
+  1: { bloom: 0.38, threshold: 1.0, knee: 0.4, blurIters: 1, rays: 0.65, taps: 12 },
   2: { bloom: 0.6, threshold: 1.0, knee: 0.4, blurIters: 2, rays: 0.7, taps: 16 },
 };
 const MAX_TAPS = 16;
