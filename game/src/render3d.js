@@ -20,6 +20,9 @@ const _desiredPos = new THREE.Vector3();
 const _desiredLook = new THREE.Vector3();
 const _right = new THREE.Vector3();
 const _proj = new THREE.Vector3();
+const _frustum = new THREE.Frustum();
+const _projMat = new THREE.Matrix4();
+const _sphere = new THREE.Sphere();
 const sstep = (a, b, x) => {
   const t = Math.min(1, Math.max(0, (x - a) / (b - a)));
   return t * t * (3 - 2 * t);
@@ -123,35 +126,59 @@ function buildJet({ body, accent, canopy, scale = 1 }) {
   return g;
 }
 
-function buildTerrain(seed) {
+// Terrain as 5x5 tiles instead of one 12000m mesh. One mesh's bounding
+// sphere covered the whole world, so it always intersected the camera
+// frustum and all 45,000 triangles were drawn every frame, even the
+// hills behind the player. Tiles each get their own bounding sphere, so
+// off-screen tiles are skipped — by the renderer and by the explicit
+// culling pass in sync(). Same total triangles, same heights and colours
+// (both are pure functions of x,z, so shared edges match exactly).
+// Normals come from finite differences of terrainHeight instead of
+// computeVertexNormals: a tile's edge vertices would otherwise miss
+// their neighbours across the tile border and shade with a visible seam.
+function buildTerrainTiles(seed) {
   const S = CFG.world.size;
-  const seg = 150;
-  const geo = new THREE.PlaneGeometry(S, S, seg, seg);
-  geo.rotateX(-Math.PI / 2);
-  const pos = geo.attributes.position;
-  const colors = new Float32Array(pos.count * 3);
+  const TILES = 5, SEG = 30, TS = S / TILES;
+  const mat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95, metalness: 0 });
   const cGrass = new THREE.Color(0x5f9150), cGrass2 = new THREE.Color(0x7fae5e);
   const cForest = new THREE.Color(0x3f6b3a), cRock = new THREE.Color(0x8a8578);
   const cSand = new THREE.Color(0xc9b183), cSeaFloor = new THREE.Color(0x3d6b5a);
   const tmp = new THREE.Color();
-  for (let i = 0; i < pos.count; i++) {
-    const x = pos.getX(i), z = pos.getZ(i);
-    const h = terrainHeight(x, z);
-    pos.setY(i, h);
-    const n = fbm2(x * 0.004, z * 0.004, seed + 31) * 0.5 + 0.5;
-    if (h < 1) tmp.copy(cSeaFloor).lerp(cSand, clamp((h + 14) / 15, 0, 1));
-    else if (h < 8) tmp.copy(cSand);
-    else if (h < 130) tmp.copy(cGrass).lerp(cGrass2, n);
-    else if (h < 210) tmp.copy(cGrass2).lerp(cForest, (h - 130) / 80);
-    else tmp.copy(cForest).lerp(cRock, (h - 210) / 70);
-    // River banks stay sandy.
-    if (Math.abs(z - riverZ(x)) < 170 && h < 12) tmp.copy(cSand).lerp(tmp, 0.4);
-    colors[i * 3] = tmp.r; colors[i * 3 + 1] = tmp.g; colors[i * 3 + 2] = tmp.b;
+  const tiles = [];
+  for (let ti = 0; ti < TILES; ti++) for (let tj = 0; tj < TILES; tj++) {
+    const cx = -S / 2 + (ti + 0.5) * TS, cz = -S / 2 + (tj + 0.5) * TS;
+    const geo = new THREE.PlaneGeometry(TS, TS, SEG, SEG);
+    geo.rotateX(-Math.PI / 2);
+    geo.translate(cx, 0, cz);
+    const pos = geo.attributes.position;
+    const colors = new Float32Array(pos.count * 3);
+    const normals = new Float32Array(pos.count * 3);
+    const e = 10; // finite-difference step for the normal
+    for (let i = 0; i < pos.count; i++) {
+      const x = pos.getX(i), z = pos.getZ(i);
+      const h = terrainHeight(x, z);
+      pos.setY(i, h);
+      const n = fbm2(x * 0.004, z * 0.004, seed + 31) * 0.5 + 0.5;
+      if (h < 1) tmp.copy(cSeaFloor).lerp(cSand, clamp((h + 14) / 15, 0, 1));
+      else if (h < 8) tmp.copy(cSand);
+      else if (h < 130) tmp.copy(cGrass).lerp(cGrass2, n);
+      else if (h < 210) tmp.copy(cGrass2).lerp(cForest, (h - 130) / 80);
+      else tmp.copy(cForest).lerp(cRock, (h - 210) / 70);
+      // River banks stay sandy.
+      if (Math.abs(z - riverZ(x)) < 170 && h < 12) tmp.copy(cSand).lerp(tmp, 0.4);
+      colors[i * 3] = tmp.r; colors[i * 3 + 1] = tmp.g; colors[i * 3 + 2] = tmp.b;
+      // Heightfield normal: normalize(-dh/dx, 1, -dh/dz).
+      const dx = (terrainHeight(x + e, z) - terrainHeight(x - e, z)) / (2 * e);
+      const dz = (terrainHeight(x, z + e) - terrainHeight(x, z - e)) / (2 * e);
+      const inv = 1 / Math.hypot(dx, 1, dz);
+      normals[i * 3] = -dx * inv; normals[i * 3 + 1] = inv; normals[i * 3 + 2] = -dz * inv;
+    }
+    geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+    geo.setAttribute('normal', new THREE.BufferAttribute(normals, 3));
+    geo.computeBoundingSphere();
+    tiles.push(new THREE.Mesh(geo, mat));
   }
-  geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-  geo.computeVertexNormals();
-  const mat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95, metalness: 0 });
-  return new THREE.Mesh(geo, mat);
+  return tiles;
 }
 
 export function createScene(container, qualityName) {
@@ -207,8 +234,10 @@ export function createScene(container, qualityName) {
   sunSprite.scale.set(1400, 1400, 1);
   scene.add(sunSprite);
 
-  // Terrain + water.
-  scene.add(buildTerrain(7));
+  // Terrain + water. Terrain is tiled (see buildTerrainTiles) so
+  // off-screen tiles can be culled instead of drawing the whole world.
+  const terrainTiles = buildTerrainTiles(7);
+  terrainTiles.forEach((t) => scene.add(t));
   const water = new THREE.Mesh(
     new THREE.PlaneGeometry(CFG.world.size, CFG.world.size),
     new THREE.MeshStandardMaterial({ color: 0x2e6f8e, transparent: true, opacity: 0.88, roughness: 0.25, metalness: 0.35 }),
@@ -248,6 +277,7 @@ export function createScene(container, qualityName) {
     s.position.set((rng() - 0.5) * 11000, 950 + rng() * 500, (rng() - 0.5) * 11000);
     s.scale.set(500 + rng() * 700, 180 + rng() * 160, 1);
     s.userData.drift = 2 + rng() * 4;
+    s.userData.enabled = true; // quality gate (see setQuality); sync() ANDs it with the frustum test
     scene.add(s);
     clouds.push(s);
   }
@@ -343,6 +373,7 @@ export function createScene(container, qualityName) {
   const handle = {
     renderer, scene, camera, container,
     playerJet, enemyMeshes, enemyMesh, rings, clouds, sunSprite, lockRing,
+    terrainTiles, cullStats: null,
     triggerExplosion,
     camPos: new THREE.Vector3(0, 560, 980),
     camLook: new THREE.Vector3(0, 520, 0),
@@ -362,7 +393,7 @@ export function createScene(container, qualityName) {
     handle.quality = q;
     const cfg = CFG.quality[q];
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, cfg.pixelRatio));
-    clouds.forEach((c, i) => { c.visible = i < cfg.clouds; });
+    clouds.forEach((c, i) => { c.userData.enabled = i < cfg.clouds; c.visible = c.userData.enabled; });
     if (resetPost) handle.setPostLevel(cfg.post);
     handle.resize();
   };
@@ -561,6 +592,52 @@ export function createScene(container, qualityName) {
     const sunUV = { x: _ndc.x * 0.5 + 0.5, y: _ndc.y * 0.5 + 0.5 };
     const off = Math.max(Math.abs(sunUV.x - 0.5), Math.abs(sunUV.y - 0.5)) * 2;
     const sunVis = sstep(0.05, 0.35, facing) * (1 - sstep(0.7, 1.25, off));
+    // ---- Frustum culling: do not render what the camera cannot see ----
+    // Three.js already culls single meshes, but whole objects were still
+    // drawn when off-screen: the terrain used to be one mesh (fixed by
+    // tiling above), and enemy jets, rings and clouds were only culled
+    // mesh-by-mesh inside the renderer. This pass hides each object
+    // whose bounding sphere misses the camera frustum, so its draw calls
+    // never happen. Every radius is generous (a false positive only draws
+    // something already visible), so nothing can vanish while on screen.
+    // Tracers, missile trails and explosions keep frustumCulled = false:
+    // their geometry is rewritten in world space every frame, so a
+    // cached bounding sphere would be wrong — and each is one tiny draw.
+    camera.updateMatrixWorld();
+    _frustum.setFromProjectionMatrix(_projMat.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse));
+    const cs = { tiles: 0, tilesTotal: terrainTiles.length, enemies: 0, rings: 0, clouds: 0, sun: 0 };
+    for (const t of terrainTiles) {
+      _sphere.center.copy(t.geometry.boundingSphere.center);
+      _sphere.radius = t.geometry.boundingSphere.radius;
+      t.visible = _frustum.intersectsSphere(_sphere);
+      if (t.visible) cs.tiles++;
+    }
+    for (const m of enemyMeshes.values()) {
+      _sphere.center.copy(m.position); _sphere.radius = 16; // jet ~21m long incl. flame, scaled 1.35
+      m.visible = _frustum.intersectsSphere(_sphere);
+      if (m.visible) cs.enemies++;
+    }
+    world.rings.forEach((r, i) => {
+      if (r.passed) { rings[i].visible = false; return; }
+      _sphere.center.copy(rings[i].position); _sphere.radius = 60; // torus 48 + tube, pulsing
+      rings[i].visible = _frustum.intersectsSphere(_sphere);
+      if (rings[i].visible) cs.rings++;
+    });
+    for (const c of clouds) {
+      if (!c.userData.enabled) { c.visible = false; continue; }
+      _sphere.center.copy(c.position);
+      _sphere.radius = 0.5 * Math.hypot(c.scale.x, c.scale.y); // sprite half-diagonal
+      c.visible = _frustum.intersectsSphere(_sphere);
+      if (c.visible) cs.clouds++;
+    }
+    _sphere.center.copy(sunSprite.position); _sphere.radius = 1000; // 1400px sprite, half-diagonal
+    sunSprite.visible = _frustum.intersectsSphere(_sphere);
+    if (sunSprite.visible) cs.sun = 1;
+    if (lockRing.visible) { // only when a lock is actually showing
+      _sphere.center.copy(lockRing.position); _sphere.radius = 28;
+      lockRing.visible = _frustum.intersectsSphere(_sphere);
+    }
+    handle.cullStats = cs;
     post.render(scene, camera, sunUV, sunVis);
   };
 

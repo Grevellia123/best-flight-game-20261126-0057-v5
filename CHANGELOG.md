@@ -1,5 +1,27 @@
 # TALON STRIKE — Changelog
 
+## v5.6 — 27 November 2026
+
+### Off-screen objects are no longer rendered
+- Objects outside the camera's field of view are now skipped instead
+  of drawn. The terrain used to be a single 12,000 m mesh, so its
+  bounding sphere always touched the frustum and all 45,000 triangles
+  were drawn every frame — even the hills behind you. It is now 25
+  tiles (5×5, same 45,000 triangles in total), each with its own
+  bounding sphere, so only the tiles in view are drawn. Heights and
+  colours are unchanged, and the tile normals are computed from the
+  terrain function itself, so there are no seams where tiles meet.
+- Every frame also hides whole enemy jets, bonus rings, clouds, the
+  sun glow and the lock ring when their bounding sphere misses the
+  frustum. The radii are deliberately generous, so nothing can vanish
+  while it is still on screen. Tracers, missile trails and explosions
+  are untouched: each is a single tiny draw, and their geometry is
+  rewritten in world space every frame, so a cached bounding sphere
+  would be wrong for them.
+- You can watch it work in the browser console: `__talon.cull` shows
+  how many terrain tiles, enemies, rings and clouds are drawn each
+  frame.
+
 ## v5.5 — 27 November 2026
 
 ### FLY THE SORTIE button no longer clips on phones

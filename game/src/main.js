@@ -597,6 +597,7 @@ window.__talon = {
   start: startGame,
   autopilot: (on) => { window.__autopilot = on; },
   get fps() { return Math.round(fpsAvg); },
+  get cull() { return scene.cullStats; },
   get settings() { return settings; },
   version: 'v5',
 };
