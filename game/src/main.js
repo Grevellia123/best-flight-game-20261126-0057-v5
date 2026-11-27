@@ -57,22 +57,22 @@ if (settings.muted) audio.setMuted(true);
 audio.prime();
 audio.setMusicVolume(settings.musicVol);
 audio.setSfxVolume(settings.sfxVol);
-// The mute icon follows real audibility, not just the muted flag: a
-// suspended context is silent even when unmuted, so the icon starts
-// muted and flips to sound-on the moment the context actually runs.
+// The mute controls show the *setting*, not the suspended context:
+// sound is ON by default. Before the first tap the browser will not
+// let any page play sound yet, so the lobby is silent until then —
+// but the setting is on, and the first tap anywhere starts the BGM.
 audio.onStateChange(updateMuteUI);
 // First tap / keypress anywhere unlocks audio — including taps on the
 // lobby, so the background music starts on the title screen instead of
 // only when the sortie begins. unlock() is idempotent.
-// One exception: a tap ON a mute control does NOT unlock here. Its click
-// handler owns the unlock, so the same tap can't both unlock the audio
-// and toggle mute — that double action from one tap was the "press twice
-// to turn sound on" bug (pointerdown resumed the context, then the click
-// saw an audible context and muted it). The listener stays live until
-// an unlock actually happens, so a first tap on mute never consumes it.
-// First tap / keypress anywhere unlocks audio — including taps on the
-// lobby, so the background music starts on the title screen instead of
-// only when the sortie begins. unlock() is idempotent.
+// The listeners stay live until audio is actually audible: a single
+// { once: true } pointerdown is not enough on Android Chrome, where
+// the first touch is often a scroll drag to reach the Settings panel
+// and that gesture does not resume the AudioContext. A later tap
+// (or a click on any control) must get another chance to unlock —
+// otherwise the BGM stays silent until FLY, whose click handler
+// calls audio.unlock() directly. So unlock on pointerdown, click and
+// keydown, every time, until it works.
 // If that very first gesture lands on a mute control (or is KeyM),
 // remember it: the gesture's click must turn sound ON, not toggle it
 // off. (Chrome auto-resumes the AudioContext on the tap's pointerdown,
@@ -92,8 +92,9 @@ const unlockAudio = (e) => {
   }
   audio.unlock();
 };
-window.addEventListener('pointerdown', unlockAudio, { once: true });
-window.addEventListener('keydown', unlockAudio, { once: true });
+window.addEventListener('pointerdown', unlockAudio);
+window.addEventListener('click', unlockAudio);
+window.addEventListener('keydown', unlockAudio);
 
 let scene;
 try {
@@ -195,13 +196,12 @@ function toggleMute() {
   updateMuteUI();
 }
 
-// Mute UI shows the truth about what can be heard: sound-on only when
-// the context is actually running and unmuted; the settings row says
-// SOUND OFF while the game is simply waiting for its first tap.
+// Mute controls show the setting: ON by default, MUTED only when the
+// user muted it. (They used to show SOUND OFF / 🔇 while the context
+// was merely waiting for its first tap, which read as "sound is off".)
 function updateMuteUI() {
-  const audible = audio.audible;
-  $('btn-mute').textContent = audible ? '🔊' : '🔇';
-  $('mute-setting').textContent = settings.muted ? 'MUTED' : (audible ? 'SOUND ON' : 'SOUND OFF');
+  $('btn-mute').textContent = settings.muted ? '🔇' : '🔊';
+  $('mute-setting').textContent = settings.muted ? 'MUTED' : 'SOUND ON';
 }
 
 // ---- Doppler (enemy sources relative to the player) -------------------------
@@ -227,6 +227,17 @@ function nearestEnemy() {
   }
   return best ? { enemy: best, dist: bestD } : null;
 }
+// Stereo pan of a world point relative to the player: -1 = hard left,
+// +1 = hard right, 0 = dead ahead / behind. Right in the player's
+// frame is (cos yaw, -sin yaw) in xz — facing north (yaw 0) that is
+// +x (east), facing west (yaw PI/2) that is -z (north).
+function panOf(x, y, z) {
+  const p = world.player;
+  const dx = x - p.x, dy = y - p.y, dz = z - p.z;
+  const dist = Math.hypot(dx, dy, dz) || 1;
+  const rx = Math.cos(p.yaw), rz = -Math.sin(p.yaw);
+  return Math.max(-1, Math.min(1, (dx * rx + dz * rz) / dist));
+}
 // The shooter's position rides on the enemyGun event; match the live
 // bandit nearest that spot (it is the shooter) for its radial velocity.
 function enemyNear(x, y, z) {
@@ -247,12 +258,14 @@ function updateEnemyDoppler() {
     return;
   }
   const rv = radialVelOf(near.enemy);
-  audio.enemyEngine(rv, near.dist, true);
+  const pan = panOf(near.enemy.x, near.enemy.y, near.enemy.z);
+  audio.enemyEngine(rv, near.dist, true, pan);
   // Close pass: the bandit was closing in and has just started pulling
   // away while still near — that crossing is the flyby moment. One
-  // whoosh per pass; audio.flyby itself enforces the cooldown.
+  // whoosh per pass; audio.flyby itself enforces the cooldown. The
+  // whoosh stays on the side it passes on (pan at the crossing).
   if (prevRadialVel !== null && prevRadialVel < 0 && rv >= 0 && near.dist < 500) {
-    audio.flyby(prevRadialVel, near.dist);
+    audio.flyby(prevRadialVel, near.dist, pan);
   }
   prevRadialVel = rv;
 }
@@ -404,9 +417,13 @@ function drainEvents() {
       case 'gun': audio.gun(); break;
       case 'enemyGun': {
         // The shooter's pitch follows its own Doppler, not the nearest
-        // bandit's — match the bandit at the event position.
+        // bandit's — match the bandit at the event position. Its crack
+        // is also panned to the shooter's side.
         const shooter = enemyNear(ev.x, ev.y, ev.z);
-        audio.enemyGun(shooter ? radialVelOf(shooter) : 0);
+        audio.enemyGun(
+          shooter ? radialVelOf(shooter) : 0,
+          shooter ? panOf(shooter.x, shooter.y, shooter.z) : 0,
+        );
         break;
       }
       case 'missile': audio.missile(); break;

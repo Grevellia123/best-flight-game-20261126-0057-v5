@@ -37,6 +37,19 @@ export function createAudio() {
   let enemySrc = null, enemyGain = null, enemyFilter = null;
   let enemyOsc1 = null, enemyOsc2 = null, enemyUseMp3 = false;
   let lastEnemyGunFreq = null, lastEnemyGunFactor = 1;
+  // Stereo pan for the nearest enemy: -1 = hard left, +1 = hard right,
+  // 0 = centred. Doppler is pitch-only without this — a bandit passing
+  // on your right would still sound dead centre.
+  let enemyPan = null, lastEnemyPan = 0, lastFlybyPan = 0;
+  function clampPan(v) { return Math.max(-1, Math.min(1, v || 0)); }
+  function makePan(pan) {
+    if (!ctx || typeof ctx.createStereoPanner !== 'function') return null;
+    try {
+      const p = ctx.createStereoPanner();
+      p.pan.value = clampPan(pan);
+      return p;
+    } catch { return null; }
+  }
 
   // Physical Doppler for a source with radial velocity v (m/s) relative
   // to the listener: positive v = receding (pitch falls), negative v =
@@ -82,7 +95,14 @@ export function createAudio() {
     // the player's throttle-driven engine.
     enemyFilter = ctx.createBiquadFilter(); enemyFilter.type = 'lowpass'; enemyFilter.frequency.value = 520;
     enemyGain = ctx.createGain(); enemyGain.gain.value = 0;
-    enemyFilter.connect(enemyGain); enemyGain.connect(sfxGain);
+    enemyFilter.connect(enemyGain);
+    // Enemy roar goes through its own stereo panner so it can sit
+    // left / right of the player; without a panner it is centred.
+    try {
+      enemyPan = (typeof ctx.createStereoPanner === 'function') ? ctx.createStereoPanner() : null;
+    } catch { enemyPan = null; }
+    if (enemyPan) { enemyGain.connect(enemyPan); enemyPan.connect(sfxGain); }
+    else enemyGain.connect(sfxGain);
     enemyOsc1 = ctx.createOscillator(); enemyOsc1.type = 'sawtooth'; enemyOsc1.frequency.value = 42;
     enemyOsc2 = ctx.createOscillator(); enemyOsc2.type = 'sawtooth'; enemyOsc2.frequency.value = 63;
     enemyOsc1.connect(enemyFilter); enemyOsc2.connect(enemyFilter);
@@ -198,12 +218,16 @@ export function createAudio() {
   // Nearest enemy jet, per frame: its roar fades in inside ~1200 m and
   // its pitch follows the Doppler factor — rising while it closes in,
   // falling while it pulls away. Silent when no bandit is near.
-  function enemyEngine(radialVel, dist, active) {
+  function enemyEngine(radialVel, dist, active, pan = 0) {
     if (!ctx || !enemyGain) return;
     dopplerFactor = dopplerFromRadial(radialVel);
     const t = ctx.currentTime;
     const g = active ? Math.max(0, 1 - dist / 1200) * 0.06 : 0;
     enemyGain.gain.setTargetAtTime(g, t, 0.15);
+    // Stereo: pan follows the bandit's bearing relative to the player
+    // (-1 left, +1 right), smoothed so it sweeps as the bandit crosses.
+    lastEnemyPan = clampPan(pan);
+    if (enemyPan) enemyPan.pan.setTargetAtTime(lastEnemyPan, t, 0.1);
     if (enemyUseMp3 && enemySrc) {
       enemySrc.playbackRate.setTargetAtTime(dopplerFactor, t, 0.1);
     } else if (enemyOsc1 && enemyOsc2) {
@@ -233,14 +257,19 @@ export function createAudio() {
     o.start(t); o.stop(t + dur + 0.05);
   }
 
-  function noise(t, dur, vol, filterFreq, type = 'bandpass') {
+  function noise(t, dur, vol, filterFreq, type = 'bandpass', pan) {
     const src = ctx.createBufferSource();
     src.buffer = noiseBuf;
     const f = ctx.createBiquadFilter(); f.type = type; f.frequency.value = filterFreq;
     const g = ctx.createGain();
     g.gain.setValueAtTime(vol, t);
     g.gain.exponentialRampToValueAtTime(0.001, t + dur);
-    src.connect(f); f.connect(g); g.connect(sfxGain);
+    src.connect(f); f.connect(g);
+    // Optional stereo pan (-1 left .. +1 right); no pan = centred.
+    if (typeof pan === 'number') {
+      const p = makePan(pan);
+      if (p) { g.connect(p); p.connect(sfxGain); } else g.connect(sfxGain);
+    } else g.connect(sfxGain);
     src.start(t); src.stop(t + dur + 0.05);
   }
 
@@ -361,13 +390,14 @@ export function createAudio() {
       tone(190, ctx.currentTime, 0.05, 'square', 0.08, sfxGain);
     },
     // Enemy gunfire: the crack's pitch follows the shooter's Doppler —
-    // higher while the bandit closes in, lower while it pulls away.
-    enemyGun(radialVel) {
+    // higher while the bandit closes in, lower while it pulls away —
+    // and it is panned to the shooter's side (-1 left, +1 right).
+    enemyGun(radialVel, pan = 0) {
       if (!ctx) return;
       const f = dopplerFromRadial(radialVel);
       lastEnemyGunFactor = f;
       lastEnemyGunFreq = Math.max(900, Math.min(2400, 1400 * f));
-      noise(ctx.currentTime, 0.06, 0.07, lastEnemyGunFreq, 'bandpass');
+      noise(ctx.currentTime, 0.06, 0.07, lastEnemyGunFreq, 'bandpass', pan);
     },
     // Close-pass flyby: called once when an enemy jet sweeps past the
     // player (main.js detects the closing-to-receding crossing while the
@@ -375,14 +405,18 @@ export function createAudio() {
     // and its pitch rides the Doppler arc — high on approach, falling
     // as the jet passes and pulls away. One voice at a time, 2.5 s
     // cooldown, gain scaled by how close the pass is.
-    flyby(radialVel, dist) {
+    flyby(radialVel, dist, pan = 0) {
       if (!ctx) return;
       const t = ctx.currentTime;
       if (t - lastFlybyAt < 2.5) return;
       lastFlybyAt = t;
+      lastFlybyPan = clampPan(pan);
       const g = ctx.createGain();
       g.gain.value = Math.max(0.15, Math.min(0.6, 0.6 * (1 - dist / 900)));
-      g.connect(sfxGain);
+      // The whoosh stays on the side the jet passes on: a pass on the
+      // right is dominant in the right ear, not centred.
+      const p = makePan(lastFlybyPan);
+      if (p) { g.connect(p); p.connect(sfxGain); } else g.connect(sfxGain);
       if (flybyBuf) {
         const src = ctx.createBufferSource();
         src.buffer = flybyBuf;
@@ -492,6 +526,8 @@ export function createAudio() {
     get masterLevel() { return master ? master.gain.value : null; },
     // Doppler state for debugging / automated checks.
     get dopplerFactor() { return dopplerFactor; },
+    get enemyPan() { return lastEnemyPan; },
+    get flybyPan() { return lastFlybyPan; },
     get enemyEngineRate() { return enemySrc ? enemySrc.playbackRate.value : null; },
     get enemyEngineLevel() { return enemyGain ? enemyGain.gain.value : null; },
     get missileRate() { return lastMslSrc ? lastMslSrc.playbackRate.value : null; },
