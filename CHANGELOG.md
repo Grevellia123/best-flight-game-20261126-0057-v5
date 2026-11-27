@@ -1,5 +1,13 @@
 # TALON STRIKE — Changelog
 
+## v5.27 — 27 November 2026
+
+### Buttons light up the instant you press them, a cleaner cockpit, and a sharper plane
+- Pressing a button now lights it up right away. The old highlight depended on the browser's press state, which lagged behind the game on a phone — and the FIRE and MSL buttons never showed it at all. The light is now driven straight from your touch, and it stays on for a moment after you lift your finger so even a quick tap reads clearly.
+- The cockpit's top-right systems box (FUEL / HULL bars and the GEAR / FLAP / BRK / A-B chips) is removed. Fuel and hull still show in the ENG screen on the dashboard, and fuel is still next to the altitude readout.
+- The cockpit's objective box is now plain floating text, like the rest of the HUD — no more dark panel around it. Same words, just simpler.
+- The plane stays sharp on LOW quality. Most phones start on LOW, and LOW used to render the 3D at three-quarters size and stretch it to fill the screen — that stretch is what made the jet look blurry. LOW now renders at full size, and the game sheds effects instead of resolution when it needs speed.
+
 ## v5.26 — 27 November 2026
 
 ### RESUME is no longer blue, and it lights up when you press it

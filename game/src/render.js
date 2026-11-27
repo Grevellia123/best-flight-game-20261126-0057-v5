@@ -290,11 +290,6 @@ function drawCockpit(els, world) {
   const waveName = world.wave > 0 ? CFG.waves[world.wave - 1].name : 'HOSTILES INBOUND';
   setText(els.cockpitObjTitle, `OBJ: WAVE ${Math.max(1, world.wave)} / ${CFG.waves.length} · ${waveName}`);
   setText(els.cockpitObjSub, `${world.enemies.length} HOSTILES · KILLS ${world.kills} · SCORE ${world.score} CR`);
-  setText(els.cockpitSysFuelVal, `FUEL ${Math.round(p.fuel)}%`);
-  setBar(els.cockpitSysFuelBar, p.fuel);
-  setText(els.cockpitSysHullVal, `HULL ${Math.round(p.hull)}%`);
-  setBar(els.cockpitSysHullBar, p.hull);
-  els.cockpitAbChip.classList.toggle('on', p.throttle > 0.7);
   // Ring label: the locked bandit if there is one, else the nearest.
   let tgt = world.lockTarget, dist = 0;
   if (tgt) {

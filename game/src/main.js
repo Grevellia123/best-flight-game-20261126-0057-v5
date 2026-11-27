@@ -134,13 +134,10 @@ const els = {
   mslText: $('msl-text'), stallWarn: $('stall-warn'), lockText: $('lock-text'),
   btnFire: $('btn-fire'), btnMsl: $('btn-msl'),
   btnCam: $('btn-cam'), btnPause: $('btn-pause'), btnMute: $('btn-mute'),
-  // Cockpit overlay (inside #cockpit-frame): objective + systems boxes,
-  // HUD ring label + speed / altitude readouts, and the three dashboard
-  // screens (TAC RADAR, ADI, ENG).
+  // Cockpit overlay (inside #cockpit-frame): objective line, HUD ring
+  // label + speed / altitude readouts, and the three dashboard screens
+  // (TAC RADAR, ADI, ENG).
   cockpitObjTitle: $('cockpit-obj-title'), cockpitObjSub: $('cockpit-obj-sub'),
-  cockpitSysFuelVal: $('cockpit-sys-fuel-val'), cockpitSysFuelBar: $('cockpit-sys-fuel-bar'),
-  cockpitSysHullVal: $('cockpit-sys-hull-val'), cockpitSysHullBar: $('cockpit-sys-hull-bar'),
-  cockpitAbChip: $('cockpit-ab-chip'),
   cockpitRingLbl: $('cockpit-ring-lbl'),
   cockpitSpdVal: $('cockpit-spd-val'), cockpitSpdSub: $('cockpit-spd-sub'),
   cockpitAltVal: $('cockpit-alt-val'), cockpitAltSub: $('cockpit-alt-sub'),
@@ -371,6 +368,33 @@ document.addEventListener('fullscreenchange', () => {
   $('btn-full').textContent = icon;
   $('btn-full-lobby').textContent = icon;
 });
+
+// Pressed feedback that does not depend on :active. On a phone the
+// :active highlight can lag behind the game render — and the touch
+// buttons preventDefault() their pointerdown, which can keep :active
+// from showing at all — so a quick tap reads as no feedback. Drive it
+// from pointerdown instead: the light comes on the instant the finger
+// lands, and it stays for at least 120 ms after release so even a
+// fast tap is visible. The CSS .pressed rules mirror the :active ones.
+let litButton = null, pressTimer = null;
+function lightOn(el) {
+  if (pressTimer) { clearTimeout(pressTimer); pressTimer = null; }
+  if (litButton && litButton !== el) litButton.classList.remove('pressed');
+  litButton = el;
+  el.classList.add('pressed');
+}
+function lightOff() {
+  if (pressTimer) clearTimeout(pressTimer);
+  const el = litButton;
+  pressTimer = setTimeout(() => { if (el) el.classList.remove('pressed'); if (litButton === el) litButton = null; pressTimer = null; }, 120);
+}
+document.addEventListener('pointerdown', (e) => {
+  // .touch-btn (MSL / FIRE) are <div>s, not <button>s, so match them too.
+  const b = e.target.closest ? e.target.closest('button, .touch-btn') : null;
+  if (b) lightOn(b);
+}, true);
+document.addEventListener('pointerup', lightOff, true);
+document.addEventListener('pointercancel', lightOff, true);
 
 // Buttons.
 $('btn-fly').addEventListener('click', startGame);
