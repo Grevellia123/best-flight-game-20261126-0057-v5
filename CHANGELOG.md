@@ -15,7 +15,10 @@
 - The ALT tape (and the IAS tape, to match) is now 44 px wide — the
   same width as the square top-right buttons above it — instead of
   62 px. The tapes were redrawn for the narrower width: shorter
-  ticks, smaller type, and a hairline centre box.
+  ticks, smaller type, and a hairline centre box. The three square
+  icon buttons (mute, pause, fullscreen) are now fixed to exactly
+  44 px wide too — without that, their emoji and side padding
+  stretched them to ~65 px and the tape still looked narrower.
 - The chase camera moved in close: 30 m behind the jet to 20 m, at
   the same look-down angle, so the T-7 fills the frame like a close
   chase view instead of sitting small in the distance. The cockpit

@@ -107,6 +107,13 @@
     min-width: 44px; min-height: 44px; padding: 6px 12px; border-radius: 6px;
   }
   .hud-btn:active { background: rgba(140, 220, 255, 0.25); }
+  /* The three square icon buttons are exactly 44px wide — the same
+     width as the tapes — so the ALT tape lines up with the fullscreen
+     button above it. Without a fixed width the emoji + side padding
+     stretched them to ~65px and the tape looked narrower than the
+     button above it. (ID selectors beat the .hud-btn padding in the
+     compact query below, so this holds on phone landscape too.) */
+  #btn-mute, #btn-pause, #btn-full { width: 44px; padding: 6px 0; }
   /* ---------- Cockpit frame (cockpit camera only). ---------- */
   #cockpit-frame { display: none; position: fixed; inset: 0; pointer-events: none; z-index: 4; }
   #cockpit-frame::before {
