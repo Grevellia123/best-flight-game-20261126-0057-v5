@@ -352,6 +352,9 @@
   @keyframes rotate-hint { 0%, 100% { transform: rotate(0deg); } 50% { transform: rotate(90deg); } }
   #rotate-overlay .rotate-title { font: 700 22px ui-monospace, monospace; letter-spacing: 0.18em; color: #fff; }
   #rotate-overlay .rotate-sub { font-size: 14px; letter-spacing: 0.06em; color: var(--hud-dim); }
+  #rotate-overlay .rotate-note { font-size: 13px; letter-spacing: 0.04em; color: var(--hud-dim); max-width: 320px; }
+  #rotate-overlay .rotate-note[hidden] { display: none; }
+  #btn-auto-rotate { min-width: 260px; }
   @media (max-width: 640px) {
     #compass { max-width: 210px; height: 48px; }
     #wave-info { font-size: 12px; }
@@ -731,6 +734,8 @@
   <div class="rotate-icon">📱</div>
   <div class="rotate-title">ROTATE YOUR DEVICE</div>
   <div class="rotate-sub">TALON STRIKE plays in landscape — turn your phone sideways to fly.</div>
+  <button id="btn-auto-rotate" class="big-btn">⟳ ROTATE TO LANDSCAPE</button>
+  <div class="rotate-note" id="rotate-note" hidden>Couldn't rotate automatically on this phone — please turn it sideways.</div>
 </div>
 
 <div id="webgl-error"></div>

@@ -1,5 +1,11 @@
 # TALON STRIKE — Changelog
 
+## v5.33 — 28 November 2026
+
+### Auto landscape — one tap rotates the phone
+- The "ROTATE YOUR DEVICE" screen now has a ROTATE TO LANDSCAPE button. Tap it and the phone turns itself to landscape and the game opens — no need to turn it by hand.
+- One honest limit, set by the phone itself: a page cannot rotate the phone on its own when it loads — it needs your tap first, and it needs fullscreen. If the phone refuses (for example on an iPhone), a note appears and turning it by hand still works as before.
+
 ## v5.32 — 28 November 2026
 
 ### Reverted v5.31

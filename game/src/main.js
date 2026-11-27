@@ -380,6 +380,26 @@ document.addEventListener('fullscreenchange', () => {
   $('btn-full-lobby').textContent = icon;
 });
 
+// Auto landscape: Android Chrome lets a page lock the orientation, but
+// only from a user tap and only while fullscreen — a page cannot rotate
+// the phone by itself on load. So the rotate screen offers one tap:
+// enter fullscreen, then lock to landscape. The lock releases when
+// fullscreen exits. If the browser refuses (iPhone, old Chrome), the
+// note appears and the manual rotate screen stays.
+async function tryAutoLandscape() {
+  const note = $('rotate-note');
+  try {
+    if (!window.screen || !screen.orientation || typeof screen.orientation.lock !== 'function') throw new Error('orientation lock unavailable');
+    const el = document.documentElement;
+    if (!document.fullscreenElement && el.requestFullscreen) await el.requestFullscreen();
+    await screen.orientation.lock('landscape');
+    if (note) note.hidden = true;
+  } catch (e) {
+    if (note) note.hidden = false;
+  }
+}
+$('btn-auto-rotate').addEventListener('click', tryAutoLandscape);
+
 // Pressed feedback that does not depend on :active. On a phone the
 // :active highlight can lag behind the game render — and the touch
 // buttons preventDefault() their pointerdown, which can keep :active
@@ -574,6 +594,7 @@ const rotateOverlay = document.getElementById('rotate-overlay');
 function updateOrientation() {
   const portrait = window.innerHeight > window.innerWidth;
   rotateOverlay.hidden = !portrait;
+  if (!portrait) $('rotate-note').hidden = true;
   if (portrait && world.screen === 'play' && !world.paused) togglePause();
 }
 window.addEventListener('resize', updateOrientation);
