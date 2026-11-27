@@ -6,7 +6,6 @@ export function createInput(playSurface, els) {
     gun: false, missile: false, // missile is an edge trigger, cleared by main
     camToggle: false, pauseToggle: false, muteToggle: false,
     trimUp: false, trimDown: false,
-    thrUp: false, thrDown: false, // touch throttle hold buttons
     usingTouch: false,
   };
   const keys = new Set();
@@ -84,12 +83,6 @@ export function createInput(playSurface, els) {
     el.addEventListener('pointerleave', end);
   }
   holdButton(els.btnFire, () => { state.gun = true; }, () => { state.gun = false; });
-  // Touch throttle: hold ▲ / ▼ to change speed (same 0.55/s rate as the
-  // keyboard Shift/Ctrl keys). Touch used to have no throttle control at
-  // all, so throttle sat at its 0.62 cruise default and the IAS tape
-  // never moved — it read 377 kt (194 m/s) for the whole sortie.
-  holdButton(els.btnThrUp, () => { state.thrUp = true; }, () => { state.thrUp = false; });
-  holdButton(els.btnThrDown, () => { state.thrDown = true; }, () => { state.thrDown = false; });
   if (els.btnMsl) els.btnMsl.addEventListener('pointerdown', (e) => { e.preventDefault(); state.missile = true; });
   if (els.btnCam) els.btnCam.addEventListener('pointerdown', (e) => { e.preventDefault(); state.camToggle = true; });
   if (els.btnPause) els.btnPause.addEventListener('pointerdown', (e) => { e.preventDefault(); state.pauseToggle = true; });
@@ -100,12 +93,14 @@ export function createInput(playSurface, els) {
   // dead. Click fires for both mouse clicks and touch taps; KeyM still
   // works through state.muteToggle.
 
-  // Per-frame: throttle on Shift/Ctrl (or R/V) and wheel, or the touch
-  // THR ▲ / ▼ hold buttons (wired above). (W/S steer pitch; Space
-  // fires; F launches a missile.)
+  // Per-frame: throttle on Shift/Ctrl (or R/V) and wheel. Touch has no
+  // throttle control — the THR ▲ / ▼ hold buttons were deleted at the
+  // user's request (v5.11), so on touch the throttle stays at its
+  // cruise default (0.62) and the IAS tape sits at 377 kt.
+  // (W/S steer pitch; Space fires; F launches a missile.)
   state.tick = (dt) => {
-    if (keys.has('ShiftLeft') || keys.has('ShiftRight') || keys.has('KeyR') || state.thrUp) state.throttle = Math.min(1, state.throttle + 0.55 * dt);
-    if (keys.has('ControlLeft') || keys.has('ControlRight') || keys.has('KeyV') || state.thrDown) state.throttle = Math.max(0, state.throttle - 0.55 * dt);
+    if (keys.has('ShiftLeft') || keys.has('ShiftRight') || keys.has('KeyR')) state.throttle = Math.min(1, state.throttle + 0.55 * dt);
+    if (keys.has('ControlLeft') || keys.has('ControlRight') || keys.has('KeyV')) state.throttle = Math.max(0, state.throttle - 0.55 * dt);
     return state;
   };
 

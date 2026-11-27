@@ -1,5 +1,18 @@
 # TALON STRIKE — Changelog
 
+## v5.11 — 27 November 2026
+
+### THR buttons deleted, jet a little lower
+- The THR ▲ / ▼ touch buttons are deleted, at the user's request.
+  Touch has no throttle control again, so on a phone the throttle
+  stays at its cruise default and the IAS tape sits at 377 kt —
+  the keyboard (Shift/Ctrl) and mouse wheel still change the
+  throttle on desktop.
+- The jet sits a little lower in the frame: the chase camera rides
+  higher above the jet's line (4.5 m instead of 3.5 m), so the
+  look-down angle steepens from ~14° to ~18°. Distance (14 m) and
+  the left shift (~12% of frame width) are unchanged.
+
 ## v5.10 — 27 November 2026
 
 ### Chase camera closer again, jet further left

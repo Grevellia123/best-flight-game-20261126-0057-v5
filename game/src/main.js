@@ -122,7 +122,6 @@ const els = {
   heatBar: $('heat-bar'), heatText: $('heat-text'),
   mslText: $('msl-text'), stallWarn: $('stall-warn'), lockText: $('lock-text'),
   btnFire: $('btn-fire'), btnMsl: $('btn-msl'),
-  btnThrUp: $('btn-thr-up'), btnThrDown: $('btn-thr-down'),
   btnCam: $('btn-cam'), btnPause: $('btn-pause'), btnMute: $('btn-mute'),
 };
 const input = createInput(container, els);

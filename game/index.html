@@ -150,15 +150,6 @@
   .touch-btn:active { background: rgba(140, 220, 255, 0.35); }
   #btn-fire { right: calc(18px + env(safe-area-inset-right, 0px)); bottom: calc(180px + env(safe-area-inset-bottom, 0px)); width: 84px; height: 84px; border-color: var(--red); color: #ffb0a0; }
   #btn-msl { right: calc(116px + env(safe-area-inset-right, 0px)); bottom: calc(196px + env(safe-area-inset-bottom, 0px)); width: 64px; height: 64px; border-color: var(--gold); color: #ffe1a0; }
-  /* Touch throttle: hold ▲ / ▼ to change speed — touch had no throttle
-     control, so the IAS tape never moved. A vertical pair just right of
-     the IAS tape, centred: clear of the tape, the kill feed above and
-     the bars below in both portrait and phone-landscape layouts.
-     Two-line buttons: arrow + THR caption. */
-  #btn-thr-up { left: calc(64px + env(safe-area-inset-left, 0px)); top: calc(50% - 56px); width: 56px; height: 56px; min-width: 56px; min-height: 56px; flex-direction: column; }
-  #btn-thr-down { left: calc(64px + env(safe-area-inset-left, 0px)); top: calc(50% + 8px); width: 56px; height: 56px; min-width: 56px; min-height: 56px; flex-direction: column; }
-  .thr-arrow { font-size: 17px; line-height: 1; }
-  .thr-cap { font-size: 9px; letter-spacing: 0.1em; color: var(--hud-dim); margin-top: 2px; }
   .touch-hint {
     position: absolute; left: 50%; bottom: calc(8px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%);
     font-size: 10px; letter-spacing: 0.08em; color: var(--hud-dim); white-space: nowrap;
@@ -376,11 +367,9 @@
 </div>
 
 <div id="touch-controls">
-  <div class="touch-btn" id="btn-thr-up"><span class="thr-arrow">▲</span><span class="thr-cap">THR</span></div>
-  <div class="touch-btn" id="btn-thr-down"><span class="thr-arrow">▼</span><span class="thr-cap">THR</span></div>
   <div class="touch-btn" id="btn-msl">MSL</div>
   <div class="touch-btn" id="btn-fire">FIRE</div>
-  <div class="touch-hint">DRAG TO STEER · THR ▲▼ = THROTTLE · FIRE = GUNS · MSL = MISSILE (NEEDS LOCK)</div>
+  <div class="touch-hint">DRAG TO STEER · FIRE = GUNS · MSL = MISSILE (NEEDS LOCK)</div>
 </div>
 
 <div class="screen" id="title-screen">
