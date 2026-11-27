@@ -1,5 +1,12 @@
 # TALON STRIKE — Changelog
 
+## v5.29 — 27 November 2026
+
+### Clouds tilt with the world, the lobby is the jet again, and the gunsight lags longer
+- The clouds are now part of the world: when the plane banks in the cockpit, the clouds tilt with the horizon instead of staying level like they were pasted on the screen. They still turn to face you, so they never go edge-on.
+- The lobby is the jet again. If the saved camera was the cockpit, opening the game showed the cockpit interior behind the menu — the cockpit frame and its camera now only appear in flight, and the lobby always shows the jet orbiting.
+- The gunsight now lags about three quarters of a second behind the tilt instead of a quarter — it drifts after the bank more slowly, so a turn drags it with the plane for longer.
+
 ## v5.28 — 27 November 2026
 
 ### The cockpit banks with the plane, the radar moves right, and the gunsight lags

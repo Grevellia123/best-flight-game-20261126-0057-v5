@@ -389,13 +389,13 @@ export function drawHud(els, world, opts) {
         g.stroke();
       }
     }
-    // Reticle lag: the gunsight follows the plane's tilt, but slightly
+    // Reticle lag: the gunsight follows the plane's tilt, but well
     // behind it. It drifts toward the bank (right when banking right)
-    // and toward a pitch-up, then catches up — about a quarter of a
-    // second behind, so a turn or a tilt visibly drags the cursor
-    // with it. The target boxes stay world-anchored; only the cursor
-    // (ring, ticks, dot, lock arc, hit marker) moves.
-    const lagK = 1 - Math.pow(0.02, opts.dt || 1 / 60);
+    // and toward a pitch-up, then catches up — about three quarters
+    // of a second behind, so a turn or a tilt visibly drags the
+    // cursor with it. The target boxes stay world-anchored; only the
+    // cursor (ring, ticks, dot, lock arc, hit marker) moves.
+    const lagK = 1 - Math.pow(0.25, opts.dt || 1 / 60);
     reticleLag.x += (clamp(p.roll * 30, -42, 42) - reticleLag.x) * lagK;
     reticleLag.y += (clamp(-p.pitch * 20, -28, 28) - reticleLag.y) * lagK;
     const rx = cx + reticleLag.x, ry = cy + reticleLag.y;

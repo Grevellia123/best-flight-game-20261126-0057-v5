@@ -398,12 +398,18 @@ export function createScene(container, qualityName, aaSetting = 'auto', jetModel
   }
   scene.add(runway);
 
-  // Clouds.
+  // Clouds. Y-billboards, not sprites: a sprite always faces the camera
+  // and stays upright in the frame, so when the plane banks the clouds
+  // looked pasted on the screen while the horizon tilted. A plane that
+  // lookAt()s the camera keeps world-up (no roll), so the cloud tilts
+  // with the horizon like the rest of the world, but still turns to
+  // face the camera instead of going edge-on.
   const cloudTex = cloudTexture();
+  const cloudGeo = new THREE.PlaneGeometry(1, 1);
   const clouds = [];
   const rng = mulberry32(99);
   for (let i = 0; i < 40; i++) {
-    const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: cloudTex, transparent: true, opacity: 0.75 + rng() * 0.2, depthWrite: false }));
+    const s = new THREE.Mesh(cloudGeo, new THREE.MeshBasicMaterial({ map: cloudTex, transparent: true, opacity: 0.75 + rng() * 0.2, depthWrite: false, side: THREE.DoubleSide }));
     s.userData.baseOpacity = s.material.opacity; // night mode scales this down
     s.position.set((rng() - 0.5) * 11000, 950 + rng() * 500, (rng() - 0.5) * 11000);
     s.scale.set(500 + rng() * 700, 180 + rng() * 160, 1);
@@ -720,10 +726,13 @@ export function createScene(container, qualityName, aaSetting = 'auto', jetModel
       lockRing.scale.setScalar(1 + Math.sin(time * 6) * 0.08);
     } else lockRing.visible = false;
 
-    // Clouds drift.
+    // Clouds drift, and turn to face the camera — but only in yaw/pitch,
+    // never in roll (lookAt keeps world-up), so a bank tilts them with
+    // the horizon instead of leaving them pasted level on the screen.
     for (const c of clouds) {
       c.position.x += c.userData.drift * dt;
       if (c.position.x > 5800) c.position.x = -5800;
+      c.lookAt(camera.position);
     }
     // Sun follows the player so it never leaves the sky.
     sunSprite.position.set(p.x + sunDir.x * 8800, p.y + sunDir.y * 8800, p.z + sunDir.z * 8800);
@@ -738,7 +747,7 @@ export function createScene(container, qualityName, aaSetting = 'auto', jetModel
     };
     const desiredPos = _desiredPos;
     const desiredLook = _desiredLook;
-    if (camMode === 'cockpit') {
+    if (camMode === 'cockpit' && world.screen === 'play') {
       desiredPos.set(p.x + nose.x * 2.5, p.y + 1.4, p.z + nose.z * 2.5);
       desiredLook.set(p.x + nose.x * 200, p.y + nose.y * 200, p.z + nose.z * 200);
       handle.camPos.copy(desiredPos);

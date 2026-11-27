@@ -169,6 +169,17 @@ const settingsPanel = $('settings-panel');
 const hangarPanel = $('hangar-panel');
 const lobbyPanels = $('lobby-panels');
 let lobbyPanel = null; // 'hangar' | 'settings' | null — which lobby panel is open
+// The cockpit frame and its HUD swaps only belong in flight. On the
+// title screen the lobby must show the jet orbit, not the cockpit
+// interior — even when the saved camera mode is cockpit (the setting
+// is remembered, so a returning player would otherwise open the game
+// to a cockpit background). Same for the game-over / victory screens.
+function updateCockpitVisibility() {
+  const show = settings.camMode === 'cockpit' && world.screen === 'play';
+  $('cockpit-frame').style.display = show ? 'block' : 'none';
+  document.body.classList.toggle('cockpit', show);
+}
+
 function showScreen(name) {
   for (const [k, el] of Object.entries(screens)) el.style.display = k === name ? 'flex' : 'none';
   $('hud').style.display = name === null ? 'block' : 'none';
@@ -188,6 +199,9 @@ function showScreen(name) {
     if (settingsPanel.parentElement !== lobbyPanels) lobbyPanels.appendChild(settingsPanel);
     settingsPanel.style.display = 'none';
   }
+  // The cockpit frame follows the screen, not just the camera mode —
+  // the lobby and the end screens never show it.
+  updateCockpitVisibility();
 }
 
 function fillDebrief(prefix) {
@@ -233,10 +247,7 @@ function togglePause() {
 function toggleCam() {
   settings.camMode = settings.camMode === 'chase' ? 'cockpit' : 'chase';
   saveSettings();
-  $('cockpit-frame').style.display = settings.camMode === 'cockpit' ? 'block' : 'none';
-  // body.cockpit hides the chase HUD pieces the cockpit replaces
-  // (tapes, bars, radar, wave-sub, killfeed) — see index.html.
-  document.body.classList.toggle('cockpit', settings.camMode === 'cockpit');
+  updateCockpitVisibility();
   $('btn-cam').textContent = settings.camMode === 'cockpit' ? 'CHASE' : 'COCKPIT';
   audio.click();
 }
@@ -550,8 +561,7 @@ updateJetUI();
 updateNightUI();
 $('cam-setting').textContent = `CAMERA: ${settings.camMode.toUpperCase()}`;
 $('btn-cam').textContent = settings.camMode === 'cockpit' ? 'CHASE' : 'COCKPIT';
-if (settings.camMode === 'cockpit') $('cockpit-frame').style.display = 'block';
-document.body.classList.toggle('cockpit', settings.camMode === 'cockpit');
+updateCockpitVisibility();
 
 document.addEventListener('visibilitychange', () => {
   if (document.hidden && world.screen === 'play' && !world.paused) togglePause();
@@ -562,8 +572,7 @@ window.addEventListener('resize', () => scene.resize());
 if (SHOT) {
   shotInfo = stageShot(world, SHOT);
   settings.camMode = shotInfo.camMode;
-  $('cockpit-frame').style.display = settings.camMode === 'cockpit' ? 'block' : 'none';
-  document.body.classList.toggle('cockpit', settings.camMode === 'cockpit');
+  updateCockpitVisibility();
   $('btn-cam').textContent = settings.camMode === 'cockpit' ? 'CHASE' : 'COCKPIT';
   if (SHOT === 'cover') { showScreen('title'); audio.setMood('title'); }
   else if (SHOT === 'victory') { fillDebrief('win'); showScreen('win'); audio.setMood('win'); }
