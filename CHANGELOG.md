@@ -1,5 +1,10 @@
 # TALON STRIKE — Changelog
 
+## v5.35 — 28 November 2026
+
+### Sun glare removed
+- The sun glare is taken back out — facing the sun no longer washes the screen. The lower lock text and the night aurora from v5.34 stay.
+
 ## v5.34 — 28 November 2026
 
 ### Sun glare, lower lock text, and aurora in night mode

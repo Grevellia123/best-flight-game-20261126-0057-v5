@@ -865,14 +865,6 @@ export function createScene(container, qualityName, aaSetting = 'auto', jetModel
     const sunUV = { x: _ndc.x * 0.5 + 0.5, y: _ndc.y * 0.5 + 0.5 };
     const off = Math.max(Math.abs(sunUV.x - 0.5), Math.abs(sunUV.y - 0.5)) * 2;
     const sunVis = sstep(0.05, 0.35, facing) * (1 - sstep(0.7, 1.25, off));
-    // Sun glare: how hard the camera faces the sun, for the DOM glare
-    // overlay (main.js applies it). Only in flight, only by day — the
-    // moon gets no glare. Fades out as the sun leaves the frame. The
-    // wash is the DEVICE screen glaring, not the plane lighting up.
-    const glare = world.screen === 'play' && !handle.night
-      ? sstep(0.75, 0.95, facing) * (1 - sstep(0.7, 1.25, off))
-      : 0;
-    handle.glare = { x: sunUV.x, y: sunUV.y, s: glare };
     // ---- Frustum culling: do not render what the camera cannot see ----
     // Three.js already culls single meshes, but whole objects were still
     // drawn when off-screen: the terrain used to be one mesh (fixed by
