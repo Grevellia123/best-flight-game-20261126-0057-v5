@@ -343,6 +343,15 @@
   .stat b { color: var(--hud); }
   .btn-row { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
   #webgl-error { display: none; position: fixed; inset: 0; z-index: 50; align-items: center; justify-content: center; padding: 24px; background: #0a141c; color: #ffb0a0; font-size: 14px; text-align: center; }
+  /* v5.30: portrait is disabled — the game only plays in landscape.
+     The overlay covers every screen while the device is held upright,
+     so nothing is tappable or visible until it is turned sideways. */
+  #rotate-overlay { position: fixed; inset: 0; z-index: 60; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; padding: 24px; background: #070d13; color: var(--hud); text-align: center; }
+  #rotate-overlay[hidden] { display: none; }
+  #rotate-overlay .rotate-icon { font-size: 64px; line-height: 1; animation: rotate-hint 2.2s ease-in-out infinite; }
+  @keyframes rotate-hint { 0%, 100% { transform: rotate(0deg); } 50% { transform: rotate(90deg); } }
+  #rotate-overlay .rotate-title { font: 700 22px ui-monospace, monospace; letter-spacing: 0.18em; color: #fff; }
+  #rotate-overlay .rotate-sub { font-size: 14px; letter-spacing: 0.06em; color: var(--hud-dim); }
   @media (max-width: 640px) {
     #compass { max-width: 210px; height: 48px; }
     #wave-info { font-size: 12px; }
@@ -716,6 +725,12 @@
        in main.js) — same sound / camera / resolution controls as the
        title screen, no duplicate controls. It sits below the buttons so
        RESUME stays at the top; the screen scrolls on short phones. -->
+</div>
+
+<div id="rotate-overlay" hidden>
+  <div class="rotate-icon">📱</div>
+  <div class="rotate-title">ROTATE YOUR DEVICE</div>
+  <div class="rotate-sub">TALON STRIKE plays in landscape — turn your phone sideways to fly.</div>
 </div>
 
 <div id="webgl-error"></div>

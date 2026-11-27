@@ -1,5 +1,11 @@
 # TALON STRIKE — Changelog
 
+## v5.30 — 27 November 2026
+
+### Portrait mode is disabled — the game plays in landscape only
+- Holding the phone upright now shows a full-screen "ROTATE YOUR DEVICE" screen instead of the game, on every screen — lobby, flight and pause. Turning the phone sideways dismisses it and the game is right where it was.
+- If you rotate mid-flight, the game pauses itself first, so nothing can shoot you while the screen is covered. Rotate back and tap RESUME to keep flying.
+
 ## v5.29 — 27 November 2026
 
 ### Clouds tilt with the world, the lobby is the jet again, and the gunsight lags longer

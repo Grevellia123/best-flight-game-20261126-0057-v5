@@ -566,6 +566,19 @@ updateCockpitVisibility();
 document.addEventListener('visibilitychange', () => {
   if (document.hidden && world.screen === 'play' && !world.paused) togglePause();
 });
+// v5.30: portrait is disabled — the game only plays in landscape.
+// While the device is held upright the overlay covers every screen,
+// and rotating mid-flight pauses first, so nothing shoots the player
+// while they cannot see the game.
+const rotateOverlay = document.getElementById('rotate-overlay');
+function updateOrientation() {
+  const portrait = window.innerHeight > window.innerWidth;
+  rotateOverlay.hidden = !portrait;
+  if (portrait && world.screen === 'play' && !world.paused) togglePause();
+}
+window.addEventListener('resize', updateOrientation);
+window.addEventListener('orientationchange', updateOrientation);
+updateOrientation();
 window.addEventListener('resize', () => scene.resize());
 
 // ---- staged shots / autopilot -----------------------------------------------
