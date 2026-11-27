@@ -792,6 +792,11 @@ export function createScene(container, qualityName, aaSetting = 'auto', jetModel
     }
     camera.position.copy(handle.camPos);
     camera.lookAt(handle.camLook);
+    // Cockpit camera is fixed to the airframe: when the plane banks, the
+    // view banks with it and the horizon tilts, like sitting in the
+    // seat. Same roll as the jet mesh (rotation.z = -p.roll). The chase
+    // camera stays level — only the cockpit rolls.
+    if (camMode === 'cockpit') camera.rotateZ(-p.roll);
     // Speed shake at high speed.
     if (world.screen === 'play' && p.speed > 220) {
       const s = (p.speed - 220) / 120 * 0.35;

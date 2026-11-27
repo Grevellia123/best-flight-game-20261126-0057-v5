@@ -1,5 +1,12 @@
 # TALON STRIKE — Changelog
 
+## v5.28 — 27 November 2026
+
+### The cockpit banks with the plane, the radar moves right, and the gunsight lags
+- In the cockpit, the camera is now fixed to the airframe: when the plane banks, the whole view banks with it and the horizon tilts, like sitting in the seat. The chase camera stays level, so you still see the jet bank in frame there.
+- The TAC RADAR screen is now on the right end of the dashboard, with ENG / FUEL / SYS on the left — the radar sits in the right corner, like the corner radar in the chase view.
+- The gunsight (reticle) now follows the plane's tilt with a slight delay. When you bank or pitch, the cursor drifts toward the tilt and catches up about a quarter of a second later, so a turn visibly drags it with the plane. The target boxes stay pinned to the bandits; only the cursor moves.
+
 ## v5.27 — 27 November 2026
 
 ### Buttons light up the instant you press them, a cleaner cockpit, and a sharper plane

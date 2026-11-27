@@ -15,6 +15,10 @@ function setBar(el, pct) {
 }
 function setOp(el, v) { if (el._op !== v) { el._op = v; el.style.opacity = v; } }
 
+// Reticle lag state: the gunsight follows the plane's tilt, but slightly
+// behind it (see drawHud). Kept here so it survives across frames.
+let reticleLag = { x: 0, y: 0 };
+
 function setupCanvas(el, maxDpr = 1.5) {
   const dpr = Math.min(window.devicePixelRatio || 1, maxDpr);
   const w = el.clientWidth, h = el.clientHeight;
@@ -385,6 +389,16 @@ export function drawHud(els, world, opts) {
         g.stroke();
       }
     }
+    // Reticle lag: the gunsight follows the plane's tilt, but slightly
+    // behind it. It drifts toward the bank (right when banking right)
+    // and toward a pitch-up, then catches up — about a quarter of a
+    // second behind, so a turn or a tilt visibly drags the cursor
+    // with it. The target boxes stay world-anchored; only the cursor
+    // (ring, ticks, dot, lock arc, hit marker) moves.
+    const lagK = 1 - Math.pow(0.02, opts.dt || 1 / 60);
+    reticleLag.x += (clamp(p.roll * 30, -42, 42) - reticleLag.x) * lagK;
+    reticleLag.y += (clamp(-p.pitch * 20, -28, 28) - reticleLag.y) * lagK;
+    const rx = cx + reticleLag.x, ry = cy + reticleLag.y;
     // Reticle — v5.14: smaller again (the big 20 px ring from the v5.13
     // revert read too large; this is the v5.12 size, without the v5.12
     // performance changes).
@@ -392,21 +406,21 @@ export function drawHud(els, world, opts) {
     g.strokeStyle = locked ? '#ff4030' : 'rgba(140, 230, 255, 0.9)';
     g.lineWidth = locked ? 2 : 1.5;
     const rr = locked ? 16 : 12;
-    g.beginPath(); g.arc(cx, cy, rr, 0, Math.PI * 2); g.stroke();
+    g.beginPath(); g.arc(rx, ry, rr, 0, Math.PI * 2); g.stroke();
     g.beginPath();
     for (const [dx, dy] of [[0, -1], [0, 1], [-1, 0], [1, 0]]) {
-      g.moveTo(cx + dx * (rr + 3), cy + dy * (rr + 3));
-      g.lineTo(cx + dx * (rr + 9), cy + dy * (rr + 9));
+      g.moveTo(rx + dx * (rr + 3), ry + dy * (rr + 3));
+      g.lineTo(rx + dx * (rr + 9), ry + dy * (rr + 9));
     }
     g.stroke();
     g.fillStyle = locked ? '#ff4030' : 'rgba(140, 230, 255, 0.9)';
-    g.beginPath(); g.arc(cx, cy, 1.6, 0, Math.PI * 2); g.fill();
+    g.beginPath(); g.arc(rx, ry, 1.6, 0, Math.PI * 2); g.fill();
     // Lock progress arc.
     if (world.lockTarget && world.lockProgress > 0 && world.lockProgress < 1) {
       g.strokeStyle = '#7fd4ff';
       g.lineWidth = 2.5;
       g.beginPath();
-      g.arc(cx, cy, rr + 6, -Math.PI / 2, -Math.PI / 2 + world.lockProgress * Math.PI * 2);
+      g.arc(rx, ry, rr + 6, -Math.PI / 2, -Math.PI / 2 + world.lockProgress * Math.PI * 2);
       g.stroke();
     }
     // Target boxes.
@@ -436,10 +450,10 @@ export function drawHud(els, world, opts) {
       g.lineWidth = 2;
       const m = 7;
       g.beginPath();
-      g.moveTo(cx - m, cy - m); g.lineTo(cx - m * 0.4, cy - m * 0.4);
-      g.moveTo(cx + m, cy - m); g.lineTo(cx + m * 0.4, cy - m * 0.4);
-      g.moveTo(cx - m, cy + m); g.lineTo(cx - m * 0.4, cy + m * 0.4);
-      g.moveTo(cx + m, cy + m); g.lineTo(cx + m * 0.4, cy + m * 0.4);
+      g.moveTo(rx - m, ry - m); g.lineTo(rx - m * 0.4, ry - m * 0.4);
+      g.moveTo(rx + m, ry - m); g.lineTo(rx + m * 0.4, ry - m * 0.4);
+      g.moveTo(rx - m, ry + m); g.lineTo(rx - m * 0.4, ry + m * 0.4);
+      g.moveTo(rx + m, ry + m); g.lineTo(rx + m * 0.4, ry + m * 0.4);
       g.stroke();
     }
   }

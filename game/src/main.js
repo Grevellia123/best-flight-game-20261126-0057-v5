@@ -758,6 +758,7 @@ function frame(now) {
       project: (x, y, z) => scene.project(x, y, z),
       streaks: CFG.quality[settings.quality].streaks,
       hitFlash,
+      dt,
       cockpit: settings.camMode === 'cockpit',
     });
   }
