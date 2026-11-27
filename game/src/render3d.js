@@ -210,9 +210,146 @@ function buildF35({ body, accent, canopy, scale = 1 }) {
   return g;
 }
 
-// The player's jet: the T-7 Talon or the F-35 Lightning II.
+// The F-16 Fighting Falcon: slim fuselage, long pointed nose, big
+// frameless bubble canopy, single swept tail, chin intake, underwing
+// tanks and orange wingtip rails. Same builder style as buildJet:
+// nose along local -z, ~11 m span, scale 1.35, same 'flame'/'glow'
+// child names so sync() just works. The landing gear lives in a
+// group named 'gear' so sync() can hide it once the jet takes off.
+function buildF16() {
+  const g = new THREE.Group();
+  const matBody = new THREE.MeshStandardMaterial({ color: 0xb7bcc2, metalness: 0.55, roughness: 0.45 });
+  const matDark = new THREE.MeshStandardMaterial({ color: 0x2a2f36, metalness: 0.6, roughness: 0.5 });
+  const matRadome = new THREE.MeshStandardMaterial({ color: 0x55595f, metalness: 0.6, roughness: 0.5 });
+  const matGlass = new THREE.MeshStandardMaterial({ color: 0x0e1418, metalness: 0.9, roughness: 0.1 });
+  const matAccent = new THREE.MeshStandardMaterial({ color: 0xe05a28, metalness: 0.4, roughness: 0.45 });
+  const matTire = new THREE.MeshStandardMaterial({ color: 0x14161a, metalness: 0.2, roughness: 0.9 });
+  const matStrut = new THREE.MeshStandardMaterial({ color: 0xc8ccd0, metalness: 0.8, roughness: 0.3 });
+  const fusLen = 9.8;
+  const noseLen = 4.6;
+  const tailZ = fusLen / 2 - 0.2;
+
+  // Slim fuselage + pointed nose (radome tip darker grey).
+  const fus = new THREE.Mesh(new THREE.CylinderGeometry(1.0, 1.25, fusLen, 12), matBody);
+  fus.rotation.x = Math.PI / 2; g.add(fus);
+  const nose = new THREE.Mesh(new THREE.ConeGeometry(1.0, noseLen, 12), matBody);
+  nose.rotation.x = -Math.PI / 2; nose.position.z = -(fusLen / 2 + noseLen / 2); g.add(nose);
+  const radome = new THREE.Mesh(new THREE.ConeGeometry(0.42, 1.3, 10), matRadome);
+  radome.rotation.x = -Math.PI / 2; radome.position.z = -(fusLen / 2 + noseLen) - 0.1; g.add(radome);
+  // Cropped-delta wing: swept leading edge, short tip chord.
+  const wingShape = new THREE.Shape();
+  wingShape.moveTo(0, 2.4); wingShape.lineTo(5.6, -0.8); wingShape.lineTo(5.6, -2.2);
+  wingShape.lineTo(0, -1.6); wingShape.closePath();
+  const wingGeo = new THREE.ExtrudeGeometry(wingShape, { depth: 0.24, bevelEnabled: false });
+  const wingR = new THREE.Mesh(wingGeo, matBody);
+  wingR.rotation.x = -Math.PI / 2; wingR.position.y = -0.1; g.add(wingR);
+  const wingL = new THREE.Mesh(wingGeo, matBody);
+  wingL.rotation.x = -Math.PI / 2; wingL.scale.x = -1;
+  wingL.position.y = -0.1; g.add(wingL);
+  // Orange wingtip rails.
+  const railGeo = new THREE.BoxGeometry(0.18, 0.18, 2.0);
+  for (const s of [-1, 1]) {
+    const rail = new THREE.Mesh(railGeo, matAccent);
+    rail.position.set(s * 5.55, -0.05, 1.0); g.add(rail);
+  }
+  // All-moving tailplanes.
+  const stabShape = new THREE.Shape();
+  stabShape.moveTo(0, 0.9); stabShape.lineTo(2.3, -0.5); stabShape.lineTo(2.3, -1.3);
+  stabShape.lineTo(0, -1.1); stabShape.closePath();
+  const stabGeo = new THREE.ExtrudeGeometry(stabShape, { depth: 0.18, bevelEnabled: false });
+  for (const s of [-1, 1]) {
+    const stab = new THREE.Mesh(stabGeo, matBody);
+    stab.rotation.x = -Math.PI / 2; stab.scale.x = s;
+    stab.position.set(0, -0.05, tailZ); g.add(stab);
+  }
+  // Single swept fin with an orange tip.
+  const finShape = new THREE.Shape();
+  finShape.moveTo(-1.4, 0); finShape.lineTo(1.4, 0); finShape.lineTo(0.7, 3.0); finShape.lineTo(-0.1, 3.0);
+  finShape.closePath();
+  const fin = new THREE.Mesh(new THREE.ExtrudeGeometry(finShape, { depth: 0.2, bevelEnabled: false }), matBody);
+  fin.rotation.y = -Math.PI / 2; fin.position.set(-0.1, 1.0, tailZ); g.add(fin);
+  const finTip = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.5, 0.9), matAccent);
+  finTip.position.set(0, 4.0, tailZ + 0.3); g.add(finTip);
+  // Ventral strakes under the rear fuselage.
+  const ventGeo = new THREE.BoxGeometry(0.18, 1.2, 1.4);
+  for (const s of [-1, 1]) {
+    const vent = new THREE.Mesh(ventGeo, matBody);
+    vent.position.set(s * 0.9, -1.3, tailZ + 0.2); vent.rotation.z = -s * 0.5; g.add(vent);
+  }
+  // Big frameless bubble canopy, set forward and high like an F-16.
+  const can = new THREE.Mesh(new THREE.SphereGeometry(0.95, 14, 12), matGlass);
+  can.scale.set(0.85, 0.85, 2.1);
+  can.position.set(0, 1.0, -1.7); g.add(can);
+  // Chin intake under the nose + single nozzle.
+  const intake = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.9, 2.8), matDark);
+  intake.position.set(0, -1.0, -1.2); g.add(intake);
+  const nozzle = new THREE.Mesh(new THREE.CylinderGeometry(0.95, 1.15, 1.2, 12), matDark);
+  nozzle.rotation.x = Math.PI / 2; nozzle.position.z = fusLen / 2 + 0.5; g.add(nozzle);
+  // Underwing fuel tanks.
+  const tankGeo = new THREE.CylinderGeometry(0.42, 0.42, 2.6, 10);
+  const tankNoseGeo = new THREE.ConeGeometry(0.42, 0.9, 10);
+  for (const s of [-1, 1]) {
+    const tank = new THREE.Mesh(tankGeo, matBody);
+    tank.rotation.x = Math.PI / 2; tank.position.set(s * 2.6, -0.55, 0.6); g.add(tank);
+    const tankNose = new THREE.Mesh(tankNoseGeo, matBody);
+    tankNose.rotation.x = -Math.PI / 2; tankNose.position.set(s * 2.6, -0.55, -1.15); g.add(tankNose);
+  }
+  // Roundels on the fuselage sides (white ring, red centre).
+  const ringGeo = new THREE.CircleGeometry(0.36, 20);
+  const dotGeo = new THREE.CircleGeometry(0.24, 20);
+  const matWhite = new THREE.MeshStandardMaterial({ color: 0xf2f2f2, metalness: 0.3, roughness: 0.5 });
+  const matRed = new THREE.MeshStandardMaterial({ color: 0xc22e2e, metalness: 0.3, roughness: 0.5 });
+  for (const s of [-1, 1]) {
+    const ring = new THREE.Mesh(ringGeo, matWhite);
+    ring.rotation.y = s * Math.PI / 2; ring.position.set(s * 1.13, 0.35, -0.6); g.add(ring);
+    const dot = new THREE.Mesh(dotGeo, matRed);
+    dot.rotation.y = s * Math.PI / 2; dot.position.set(s * 1.14, 0.35, -0.6); g.add(dot);
+  }
+  // Landing gear: nose wheel + two mains, struts + doors. The wheel
+  // bottoms sit at local y -2.22, so parked at p.y = 11 the wheels
+  // touch the runway top (y = 8). All of it in one group so sync()
+  // can hide it in flight.
+  const gear = new THREE.Group();
+  gear.name = 'gear';
+  const wheelY = -1.88;
+  const strutGeo = new THREE.CylinderGeometry(0.09, 0.09, 0.85, 8);
+  const noseStrut = new THREE.Mesh(strutGeo, matStrut);
+  noseStrut.position.set(0, wheelY + 0.43, -3.0); gear.add(noseStrut);
+  const noseWheel = new THREE.Mesh(new THREE.CylinderGeometry(0.34, 0.34, 0.22, 12), matTire);
+  noseWheel.rotation.z = Math.PI / 2; noseWheel.position.set(0, wheelY, -3.0); gear.add(noseWheel);
+  const noseDoor = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.9, 0.5), matBody);
+  noseDoor.position.set(0.18, wheelY + 0.43, -3.0); noseDoor.rotation.z = -0.2; gear.add(noseDoor);
+  const strutGeoM = new THREE.CylinderGeometry(0.1, 0.1, 0.7, 8);
+  for (const s of [-1, 1]) {
+    const strut = new THREE.Mesh(strutGeoM, matStrut);
+    strut.position.set(s * 1.5, wheelY + 0.33, 1.0); gear.add(strut);
+    const wheel = new THREE.Mesh(new THREE.CylinderGeometry(0.38, 0.38, 0.26, 12), matTire);
+    wheel.rotation.z = Math.PI / 2; wheel.position.set(s * 1.5, wheelY, 1.0); gear.add(wheel);
+    const door = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.8, 0.55), matBody);
+    door.position.set(s * 1.68, wheelY + 0.38, 1.0); door.rotation.z = s * 0.2; gear.add(door);
+  }
+  g.add(gear);
+  // Afterburner flame + engine glow: same names and positions as the
+  // Talon, so the sync loop's getObjectByName('flame'/'glow') just works.
+  const flameMat = new THREE.MeshBasicMaterial({ color: 0xffa040, transparent: true, opacity: 0.9 });
+  flameMat.color.multiplyScalar(1.6);
+  const flame = new THREE.Mesh(new THREE.ConeGeometry(0.85, 3.6, 10), flameMat);
+  flame.rotation.x = Math.PI / 2; flame.position.z = fusLen / 2 + 2.6;
+  flame.name = 'flame';
+  g.add(flame);
+  const glowTex = glowTexture();
+  const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, transparent: true, opacity: 0.7, depthWrite: false }));
+  glow.material.color.setRGB(1.8, 1.3, 0.8);
+  glow.scale.set(5, 5, 1); glow.position.z = fusLen / 2 + 2.0; glow.name = 'glow';
+  g.add(glow);
+  g.scale.setScalar(1.35);
+  return g;
+}
+
+// The player's jet: the T-7 Talon, the F-35 Lightning II or the F-16 Fighting Falcon.
 function buildPlayerJet(model) {
   if (model === 'f35') return buildF35({ body: 0x8f979e, accent: 0x3d4450, canopy: 0x2e3d4a, scale: 1.35 });
+  if (model === 'f16') return buildF16();
   return buildJet({ body: 0xd8dde2, accent: 0xe8622a, canopy: 0x2f6f8f, scale: 1.35 });
 }
 
@@ -376,11 +513,11 @@ export function createScene(container, qualityName, aaSetting = 'auto', jetModel
   water.position.y = CFG.world.seaLevel;
   scene.add(water);
 
-  // Home runway: dark strip with edge lights, flat near the origin.
+  // Home runway: light grey asphalt with edge lights, flat near the origin.
   const runway = new THREE.Group();
   const strip = new THREE.Mesh(
     new THREE.BoxGeometry(46, 1, 420),
-    new THREE.MeshStandardMaterial({ color: 0x3a3f45, roughness: 0.9 }),
+    new THREE.MeshStandardMaterial({ color: 0x8f9296, roughness: 0.9 }),
   );
   strip.position.set(0, 7.5, 0);
   runway.add(strip);
@@ -389,6 +526,13 @@ export function createScene(container, qualityName, aaSetting = 'auto', jetModel
     const dash = new THREE.Mesh(new THREE.BoxGeometry(3, 0.4, 26), lineMat);
     dash.position.set(0, 8.2, z);
     runway.add(dash);
+  }
+  // Solid white lines along both edges of the asphalt.
+  const edgeMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+  for (const sx of [-21, 21]) {
+    const edge = new THREE.Mesh(new THREE.BoxGeometry(0.8, 0.15, 420), edgeMat);
+    edge.position.set(sx, 8.1, 0);
+    runway.add(edge);
   }
   const lightMat = new THREE.MeshBasicMaterial({ color: 0x7fd4ff });
   for (const sx of [-24, 24]) for (let z = -200; z <= 200; z += 50) {
@@ -628,10 +772,14 @@ export function createScene(container, qualityName, aaSetting = 'auto', jetModel
     playerJet.rotation.z = -p.roll;
     const flame = playerJet.getObjectByName('flame');
     const glow = playerJet.getObjectByName('glow');
-    const burn = world.screen === 'play' ? 0.25 + p.throttle * 0.75 : 0.3;
+    // Parked in the lobby the engine is cold — no flame, no glow. The
+    // landing gear only shows while parked; it hides once you take off.
+    const gear = playerJet.getObjectByName('gear');
+    if (gear) gear.visible = world.screen === 'title';
+    const burn = world.screen === 'play' ? 0.25 + p.throttle * 0.75 : 0;
     flame.scale.set(1, 1, burn * (0.9 + Math.random() * 0.25));
-    flame.visible = world.screen !== 'over';
-    glow.material.opacity = 0.35 + burn * 0.4;
+    flame.visible = world.screen === 'play' && world.screen !== 'over';
+    glow.material.opacity = world.screen === 'play' ? 0.35 + burn * 0.4 : 0;
     playerJet.visible = camMode !== 'cockpit' || world.screen === 'title';
 
     // Enemies.
@@ -753,28 +901,20 @@ export function createScene(container, qualityName, aaSetting = 'auto', jetModel
       handle.camPos.copy(desiredPos);
       handle.camLook.copy(desiredLook);
     } else if (world.screen === 'title') {
-      // Slow orbit around the jet for the title screen, framed so the jet
-      // sits in the right third of the frame, clear of the menu on the
-      // left. The look shift is scaled by the camera aspect: a fixed 20 m
-      // offset puts the jet at the same place on a wide screen, but on a
-      // portrait phone the frame is only ~0.45 as wide, so the same 20 m
-      // pushed the jet off the right edge entirely (only a wingtip
-      // showed). Scaling by aspect holds the jet at ~75% across on
-      // every screen: shift = 0.5 * 34 m * tan(31 deg) * aspect.
-      // The orbit radius grows on narrow screens too: in portrait the
-      // jet reads ~2x wider on screen, so at 34 m its wings ran off the
-      // right edge and hid behind the menu buttons. Up to ~42 m in
-      // portrait pulls it back just enough to fit.
-      const a = time * 0.12;
-      const orbitR = 34 * (1 + 0.25 * Math.max(0, 1 - camera.aspect));
-      desiredPos.set(p.x + Math.sin(a) * orbitR, p.y + 8 + Math.sin(time * 0.3) * 3, p.z + Math.cos(a) * orbitR);
+      // Parked on the runway for the title screen: a fixed low side
+      // camera, nose left, so the jet sits on the asphalt under the
+      // menu. The look shift is scaled by the camera aspect: a fixed
+      // offset puts the jet at the same place on a wide screen, but on
+      // a narrow screen the frame is only ~0.45 as wide, so the same
+      // offset pushed the jet off the right edge entirely. Scaling by
+      // aspect holds it in frame on every screen.
+      const a = 4.64;
+      const orbitR = 26 * (1 + 0.25 * Math.max(0, 1 - camera.aspect));
+      desiredPos.set(p.x + Math.sin(a) * orbitR, p.y + 6, p.z + Math.cos(a) * orbitR);
       _right.set(Math.cos(a), 0, -Math.sin(a));
-      const lookShift = 10.2 * camera.aspect;
-      desiredLook.set(p.x - _right.x * lookShift, p.y + 4, p.z - _right.z * lookShift);
-      // No lerp here: the orbit path is already smooth, and lerping
-      // behind a jet cruising at 90 m/s leaves the camera ~13 m behind
-      // it — that lag shoved the jet to the right edge of the frame
-      // (it sat at ~95% across instead of ~75%).
+      const lookShift = 6.0 * camera.aspect;
+      desiredLook.set(p.x - _right.x * lookShift, p.y + 8, p.z - _right.z * lookShift);
+      // No lerp here: the camera sits still while the jet is parked.
       handle.camPos.copy(desiredPos);
       handle.camLook.copy(desiredLook);
     } else {

@@ -46,7 +46,7 @@ const settings = {
   aa: ['auto', 'on', 'off'].includes(saved.aa) ? saved.aa : 'auto',
   // Jet: 'talon' (T-7) or 'f35' (F-35 Lightning II). Swaps live via
   // scene.setPlayerJet — no reload needed.
-  jet: ['talon', 'f35'].includes(saved.jet) ? saved.jet : 'talon',
+  jet: ['talon', 'f35', 'f16'].includes(saved.jet) ? saved.jet : 'talon',
   // Night mode: dark sky, stars and moonlight. Applies live via
   // scene.setNightMode — no reload needed.
   night: saved.night === true,
@@ -455,10 +455,16 @@ document.querySelectorAll('#quality-group .q-btn').forEach((b) => {
 // soon as you tap. It persists like the other settings. setJet is the
 // one place that changes it: the JET button in Settings cycles, the
 // HANGAR cards pick directly — both stay in sync through updateJetUI.
-const JET_ORDER = ['talon', 'f35'];
-const JET_LABEL = { talon: 'T-7 TALON', f35: 'F-35 LIGHTNING II' };
+const JET_ORDER = ['talon', 'f35', 'f16'];
+const JET_LABEL = { talon: 'T-7 TALON', f35: 'F-35 LIGHTNING II', f16: 'F-16 FIGHTING FALCON' };
+const JET_SUBTITLE = {
+  talon: 'T-7 TALON INTERCEPTOR · 5 WAVES · THE CRIMSON WING IS INBOUND',
+  f35: 'F-35 LIGHTNING II · 5 WAVES · THE CRIMSON WING IS INBOUND',
+  f16: 'F-16 FIGHTING FALCON · 5 WAVES · THE CRIMSON WING IS INBOUND',
+};
 function updateJetUI() {
   $('jet-setting').textContent = `JET: ${JET_LABEL[settings.jet]}`;
+  document.querySelector('#title-screen .subtitle').textContent = JET_SUBTITLE[settings.jet];
   document.querySelectorAll('.jet-card').forEach((b) => {
     b.classList.toggle('active', b.dataset.jet === settings.jet);
   });
@@ -717,7 +723,6 @@ function addKillFeed(text) {
 
 // ---- main loop -----------------------------------------------------------------
 let last = performance.now();
-let titleAngle = 0;
 // ?timescale=N (verification only): run N world substeps per rendered frame so
 // a full sortie can be played through on slow software renderers. Absent = 1.
 const TIMESCALE = Math.max(1, Math.min(8, Math.round(Number(params.get('timescale') || 1))));
@@ -733,18 +738,13 @@ function frame(now) {
   // inside the play branch, so the shortcut did nothing on the title.
   if (input.muteToggle) { input.muteToggle = false; toggleMute(); }
 
-  // Title drift: the jet flies a slow circle around home base, so it
-  // stays in the lobby view. The old straight cruise flew it to the
-  // map edge, teleported it up to 600 m, and the camera lost it for a
-  // second or two — on a phone the jet was simply gone from the lobby.
+  // Parked in the lobby: the jet sits on the runway under the menu
+  // instead of flying a circle around home base. The F-16 stands on
+  // its gear at y = 11; the T-7 and F-35 have no gear, so they sit
+  // on their bellies at y = 10.
   if (world.screen === 'title' && !frozen) {
     const p = world.player;
-    titleAngle += dt * 0.15; // 90 m/s around a 600 m circle
-    p.x = 600 * Math.sin(titleAngle);
-    p.z = 600 * Math.cos(titleAngle);
-    p.yaw = titleAngle - Math.PI / 2;
-    p.pitch = 0.02;
-    p.speed = 90;
+    p.x = 0; p.z = 0; p.y = settings.jet === 'f16' ? 11 : 10; p.yaw = 0.5; p.pitch = 0; p.roll = 0; p.speed = 0;
     world.time += dt;
   }
 

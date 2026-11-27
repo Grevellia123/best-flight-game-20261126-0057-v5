@@ -1,5 +1,13 @@
 # TALON STRIKE — Changelog
 
+## v5.31 — 28 November 2026
+
+### F-16 Fighting Falcon, and the lobby jet parks on the runway
+- A third fighter joins the hangar: the F-16 Fighting Falcon, with its long pointed nose, big bubble canopy and landing gear. Pick it in HANGAR or with the JET setting — the T-7 Talon and F-35 Lightning II are still there.
+- The lobby jet no longer flies a circle around home base. It sits parked on the runway under the menu, engine cold, gear down — like a jet waiting on the ramp. Take off and the gear tucks away.
+- The runway is light grey asphalt now, with a solid white line along each edge.
+- The dark shade over the lobby is gone, so the scene behind the menu is bright — sky, hills and runway as they are.
+
 ## v5.30 — 27 November 2026
 
 ### Portrait mode is disabled — the game plays in landscape only
