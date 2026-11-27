@@ -461,7 +461,13 @@ export function createAudio() {
         // in pitch as it travels — 1.12x at launch, easing to 0.85x.
         src.playbackRate.setValueAtTime(1.12, t);
         src.playbackRate.setTargetAtTime(0.85, t, 0.45);
-        src.connect(sfxGain);
+        // Kept quiet on purpose: the launch whoosh was the loudest
+        // launch sound in the game. A 0.5 gain (~-6 dB) keeps it
+        // audible without blasting over the engine and music.
+        const g = ctx.createGain();
+        g.gain.value = 0.5;
+        src.connect(g);
+        g.connect(sfxGain);
         src.start(t);
         lastMslSrc = src;
         mslPlays++;
@@ -475,7 +481,7 @@ export function createAudio() {
       f.frequency.setValueAtTime(2400, t);
       f.frequency.exponentialRampToValueAtTime(500, t + 0.55);
       const g = ctx.createGain();
-      g.gain.setValueAtTime(0.4, t);
+      g.gain.setValueAtTime(0.25, t);
       g.gain.exponentialRampToValueAtTime(0.001, t + 0.55);
       src.connect(f); f.connect(g); g.connect(sfxGain);
       src.start(t); src.stop(t + 0.6);

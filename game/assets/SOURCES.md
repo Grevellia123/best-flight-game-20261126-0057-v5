@@ -53,6 +53,9 @@ They are loaded by `game/src/audio.js` (wiring done separately by the main agent
 - Caveat: the file is mono and carries an embedded ID3 cover image (a PNG stream);
   both decode fine in browsers, but if the game's decoder is strict, strip the image
   (`ffmpeg -i missile.mp3 -map 0:a -c copy missile-clean.mp3`) and/or upmix to stereo.
+- Wiring: audio.js missile() plays it through a 0.5 gain (lowered 2026-11-27
+  at the user's request — the launch whoosh was too loud); the synth
+  fallback is lowered to 0.25 to match.
 
 ## 4. jet-flyby.mp3 — enemy jet close-pass whoosh
 - File: MP3, 44.1 kHz stereo, 192 kbps, 3.4 s, 83,426 bytes

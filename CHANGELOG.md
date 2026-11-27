@@ -1,5 +1,13 @@
 # TALON STRIKE — Changelog
 
+## v5.2 — 27 November 2026
+
+### Quieter missiles
+- The missile launch whoosh now plays at half volume (0.5 gain, about
+  −6 dB), and the synth fallback is lowered to match. It was the loudest
+  launch sound in the game; it now sits under the engine like the gun
+  does.
+
 ## v5.1 — 27 November 2026
 
 ### Sound on by default, music in the lobby
