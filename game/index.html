@@ -26,24 +26,33 @@
   /* ---------- HUD ---------- */
   #hud { position: fixed; inset: 0; pointer-events: none; display: none; z-index: 5; }
   .panel { background: var(--panel); border: 1px solid var(--panel-line); border-radius: 6px; }
+  /* Top strip: one flex row — wave info | compass | buttons — so the three
+     can never overlap each other at any width (previously the centred
+     compass ran over the wave panel on narrow screens). */
+  #topbar {
+    position: absolute; top: calc(8px + env(safe-area-inset-top, 0px));
+    left: calc(12px + env(safe-area-inset-left, 0px)); right: calc(12px + env(safe-area-inset-right, 0px));
+    display: flex; align-items: flex-start; justify-content: space-between; gap: 8px;
+  }
   #wave-info {
-    position: absolute; top: calc(10px + env(safe-area-inset-top, 0px)); left: calc(12px + env(safe-area-inset-left, 0px));
+    flex: 0 1 auto; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     padding: 8px 12px; font-size: 14px; font-weight: 700; letter-spacing: 0.06em;
   }
+  #compass { flex: 1 1 120px; min-width: 120px; max-width: 320px; height: 56px; }
   #wave-info .gold { color: var(--gold); }
   #wave-sub {
     position: absolute; top: calc(52px + env(safe-area-inset-top, 0px)); left: calc(12px + env(safe-area-inset-left, 0px));
     padding: 5px 10px; font-size: 11px; letter-spacing: 0.05em; color: var(--hud-dim);
   }
   #killfeed {
-    position: absolute; top: calc(88px + env(safe-area-inset-top, 0px)); left: calc(12px + env(safe-area-inset-left, 0px));
+    position: absolute; top: calc(118px + env(safe-area-inset-top, 0px)); left: calc(12px + env(safe-area-inset-left, 0px));
     font-size: 11px; letter-spacing: 0.04em;
   }
   .feed-line { padding: 3px 8px; margin-bottom: 3px; background: rgba(8, 18, 26, 0.6); border-left: 2px solid var(--gold); animation: feedin 0.2s ease-out; }
   @keyframes feedin { from { opacity: 0; transform: translateX(-8px); } to { opacity: 1; } }
-  #compass { position: absolute; top: calc(8px + env(safe-area-inset-top, 0px)); left: 50%; transform: translateX(-50%); width: 320px; height: 56px; }
+  #top-btns { flex: 0 0 auto; display: flex; gap: 8px; }
   #msg {
-    position: absolute; top: calc(74px + env(safe-area-inset-top, 0px)); left: 50%; transform: translateX(-50%);
+    position: absolute; top: calc(78px + env(safe-area-inset-top, 0px)); left: 50%; transform: translateX(-50%);
     padding: 7px 18px; font-size: 13px; font-weight: 700; letter-spacing: 0.08em; color: #ffe9b0;
     background: rgba(8, 18, 26, 0.72); border: 1px solid rgba(255, 176, 32, 0.5); border-radius: 4px;
     transition: opacity 0.4s; white-space: nowrap; max-width: 92vw; overflow: hidden; text-overflow: ellipsis;
@@ -85,9 +94,7 @@
     min-width: 44px; min-height: 44px; padding: 6px 12px; border-radius: 6px;
   }
   .hud-btn:active { background: rgba(140, 220, 255, 0.25); }
-  #top-btns { position: absolute; top: calc(10px + env(safe-area-inset-top, 0px)); right: calc(12px + env(safe-area-inset-right, 0px)); display: flex; gap: 8px; }
-
-  /* Cockpit frame (cockpit camera only). */
+  /* ---------- Cockpit frame (cockpit camera only). ---------- */
   #cockpit-frame { display: none; position: fixed; inset: 0; pointer-events: none; z-index: 4; }
   #cockpit-frame::before {
     content: ''; position: absolute; inset: 0;
@@ -124,7 +131,7 @@
   #btn-fire { right: calc(18px + env(safe-area-inset-right, 0px)); bottom: calc(180px + env(safe-area-inset-bottom, 0px)); width: 84px; height: 84px; border-color: var(--red); color: #ffb0a0; }
   #btn-msl { right: calc(116px + env(safe-area-inset-right, 0px)); bottom: calc(196px + env(safe-area-inset-bottom, 0px)); width: 64px; height: 64px; border-color: var(--gold); color: #ffe1a0; }
   #btn-thr-up { left: calc(18px + env(safe-area-inset-left, 0px)); bottom: calc(196px + env(safe-area-inset-bottom, 0px)); }
-  #btn-thr-dn { left: calc(18px + env(safe-area-inset-left, 0px)); bottom: calc(116px + env(safe-area-inset-bottom, 0px)); }
+  #btn-thr-dn { left: calc(18px + env(safe-area-inset-left, 0px)); bottom: calc(124px + env(safe-area-inset-bottom, 0px)); }
   .touch-hint {
     position: absolute; left: 50%; bottom: calc(8px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%);
     font-size: 10px; letter-spacing: 0.08em; color: var(--hud-dim); white-space: nowrap;
@@ -174,12 +181,49 @@
   .btn-row { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
   #webgl-error { display: none; position: fixed; inset: 0; z-index: 50; align-items: center; justify-content: center; padding: 24px; background: #0a141c; color: #ffb0a0; font-size: 14px; text-align: center; }
   @media (max-width: 640px) {
-    #compass { width: 210px; height: 48px; }
+    #compass { max-width: 210px; height: 48px; }
     #wave-info { font-size: 12px; }
     #bars { width: 200px; }
     #radar { width: 104px; height: 104px; }
     #ias-tape, #alt-tape { height: 170px; width: 52px; }
     .debrief { grid-template-columns: 1fr; }
+    .touch-hint { display: none; }
+  }
+  /* ---------- Compact layout: touch devices with a short screen ----------
+     Phone landscape (and small touch landscape): the old layout stacked the
+     centred tapes, the bottom bars, the radar and the round THR/FIRE/MSL
+     buttons in the same corners, so they all overlapped. Here every HUD
+     piece gets its own zone: top strip | docked tapes left/right |
+     THR buttons below the IAS tape | bars bottom-centre | FIRE/MSL
+     mid-right, left of the ALT tape | radar bottom-right. */
+  @media (pointer: coarse) and (max-height: 780px) {
+    #wave-info { font-size: 12px; padding: 6px 10px; }
+    #compass { height: 44px; }
+    .hud-btn { min-height: 40px; padding: 6px 10px; }
+    #wave-sub { left: calc(84px + env(safe-area-inset-left, 0px)); top: calc(56px + env(safe-area-inset-top, 0px)); }
+    #killfeed { left: calc(84px + env(safe-area-inset-left, 0px)); top: calc(84px + env(safe-area-inset-top, 0px)); max-height: 40px; overflow: hidden; }
+    #msg { top: calc(128px + env(safe-area-inset-top, 0px)); font-size: 12px; }
+    #ias-tape, #alt-tape { top: calc(92px + env(safe-area-inset-top, 0px)); transform: none; height: calc(100vh - 210px); min-height: 96px; }
+    #bars { left: 50%; transform: translateX(-50%); bottom: calc(12px + env(safe-area-inset-bottom, 0px)); width: 250px; }
+    #radar { width: 96px; height: 96px; }
+    #btn-thr-up { left: calc(18px + env(safe-area-inset-left, 0px)); bottom: calc(60px + env(safe-area-inset-bottom, 0px)); width: 48px; height: 48px; min-width: 48px; min-height: 48px; }
+    #btn-thr-dn { left: calc(18px + env(safe-area-inset-left, 0px)); bottom: calc(6px + env(safe-area-inset-bottom, 0px)); width: 48px; height: 48px; min-width: 48px; min-height: 48px; }
+    #btn-fire { right: calc(88px + env(safe-area-inset-right, 0px)); bottom: calc(118px + env(safe-area-inset-bottom, 0px)); width: 72px; height: 72px; }
+    #btn-msl { right: calc(168px + env(safe-area-inset-right, 0px)); bottom: calc(126px + env(safe-area-inset-bottom, 0px)); width: 56px; height: 56px; min-width: 56px; min-height: 56px; }
+    .touch-hint { display: none; }
+  }
+
+  /* Very narrow portrait: the top strip wraps so the compass drops to its
+     own row instead of running over the wave panel and the buttons. */
+  @media (max-width: 480px) {
+    #topbar { flex-wrap: wrap; }
+    #wave-info { font-size: 11px; padding: 6px 8px; }
+    .hide-narrow { display: none; }
+    #btn-cam { font-size: 10px; padding: 6px 8px; }
+    #compass { flex: 1 1 100%; width: auto; max-width: none; order: 3; height: 48px; }
+    #wave-sub { top: calc(112px + env(safe-area-inset-top, 0px)); }
+    #msg { top: calc(140px + env(safe-area-inset-top, 0px)); }
+    #killfeed { top: calc(178px + env(safe-area-inset-top, 0px)); }
   }
 </style>
 <script type="importmap">
@@ -192,10 +236,17 @@
 
 <div id="hud">
   <canvas id="overlay"></canvas>
-  <div id="wave-info" class="panel">WAVE 1 / 5 · KILLS 0 · <span class="gold">0 CR</span></div>
+  <div id="topbar">
+    <div id="wave-info" class="panel">WAVE 1 / 5 · <span class="hide-narrow">KILLS 0 · </span><span class="gold">0 CR</span></div>
+    <canvas id="compass"></canvas>
+    <div id="top-btns">
+      <button class="hud-btn" id="btn-cam">COCKPIT</button>
+      <button class="hud-btn" id="btn-mute">🔊</button>
+      <button class="hud-btn" id="btn-pause">⏸</button>
+    </div>
+  </div>
   <div id="wave-sub" class="panel"></div>
   <div id="killfeed"></div>
-  <canvas id="compass"></canvas>
   <div id="msg" class="panel"></div>
   <canvas id="ias-tape"></canvas>
   <canvas id="alt-tape"></canvas>
@@ -208,11 +259,6 @@
   <canvas id="radar"></canvas>
   <div id="stall-warn">⚠ STALL — THROTTLE UP</div>
   <div id="lock-text"></div>
-  <div id="top-btns">
-    <button class="hud-btn" id="btn-cam">COCKPIT</button>
-    <button class="hud-btn" id="btn-mute">🔊</button>
-    <button class="hud-btn" id="btn-pause">⏸</button>
-  </div>
 </div>
 
 <div id="touch-controls">

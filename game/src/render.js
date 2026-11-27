@@ -168,7 +168,7 @@ export function drawHud(els, world, opts) {
 
   // Top-left info.
   els.waveInfo.innerHTML =
-    `WAVE ${Math.max(1, world.wave)} / ${CFG.waves.length} &nbsp;·&nbsp; KILLS ${world.kills} &nbsp;·&nbsp; <span class="gold">${world.score} CR</span>`;
+    `WAVE ${Math.max(1, world.wave)} / ${CFG.waves.length} &nbsp;·&nbsp; <span class="hide-narrow">KILLS ${world.kills} &nbsp;·&nbsp; </span><span class="gold">${world.score} CR</span>`;
   els.waveSub.textContent = world.waveState === 'active' && world.wave > 0
     ? `${CFG.waves[world.wave - 1].name} — ${world.enemies.length} HOSTILES`
     : world.msg || '';
