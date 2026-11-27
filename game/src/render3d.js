@@ -557,6 +557,9 @@ export function createScene(container, qualityName, aaSetting = 'auto', jetModel
     post,
   };
 
+  // Aurora shows at night on low and high, but not on medium.
+  const updateAurora = () => { auroraGroup.visible = handle.night && handle.quality !== 'medium'; };
+
   // Post level is separate from render quality so the FPS step-down can
   // shed the bloom/god-rays first, before dropping resolution.
   handle.setPostLevel = (l) => {
@@ -566,6 +569,7 @@ export function createScene(container, qualityName, aaSetting = 'auto', jetModel
 
   handle.setQuality = (q, resetPost = true) => {
     handle.quality = q;
+    updateAurora();
     const cfg = CFG.quality[q];
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, cfg.pixelRatio));
     clouds.forEach((c, i) => { c.userData.enabled = i < cfg.clouds; c.visible = c.userData.enabled; });
@@ -609,7 +613,7 @@ export function createScene(container, qualityName, aaSetting = 'auto', jetModel
     sunSprite.material.opacity = m.moonOpacity;
     clouds.forEach((c) => { c.material.opacity = c.userData.baseOpacity * m.cloudOpacity; c.material.color.setHex(m.cloudColor); });
     stars.visible = on;
-    auroraGroup.visible = on;
+    updateAurora();
   };
 
   // Swap the player's jet live (title-screen JET button) — no reload.
@@ -870,7 +874,7 @@ export function createScene(container, qualityName, aaSetting = 'auto', jetModel
     // so it works on every graphics setting, unlike the post-process
     // god rays that vanish when post is shed.
     const sunFlareS = world.screen === 'play' && !handle.night
-      ? sstep(0.7, 0.95, facing) * (1 - sstep(0.7, 1.25, off))
+      ? sstep(0.6, 0.9, facing) * (1 - sstep(0.7, 1.25, off))
       : 0;
     handle.sunFlare = { x: sunUV.x, y: sunUV.y, s: sunFlareS };
     // ---- Frustum culling: do not render what the camera cannot see ----

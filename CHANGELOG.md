@@ -1,5 +1,11 @@
 # TALON STRIKE — Changelog
 
+## v5.37 — 28 November 2026
+
+### Stronger lens flare, no aurora on medium
+- The lens flare is much bigger and brighter now: a large bright core on the sun, a wide streak across it, and big rings and a dot mirrored across the screen — so the screen itself dazzles when you face the sun, not just the plane.
+- The night aurora no longer shows on medium graphics — it is only on low and high now. It still shows at night in the northern sky on those settings.
+
 ## v5.36 — 28 November 2026
 
 ### FPS indicator, lens flare, and stronger god rays on medium

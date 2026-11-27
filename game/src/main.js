@@ -151,11 +151,11 @@ const els = {
 // Lens-flare parts: element, position factor along the sun-to-centre axis
 // (1 = on the sun, negative = mirrored across the centre), peak opacity.
 const flareParts = [
-  { el: document.querySelector('.lf-core'), f: 1, max: 0.9 },
-  { el: document.querySelector('.lf-streak'), f: 1, max: 0.4 },
-  { el: document.querySelector('.lf-ring-a'), f: -0.45, max: 0.5 },
-  { el: document.querySelector('.lf-ring-b'), f: -0.9, max: 0.55 },
-  { el: document.querySelector('.lf-dot'), f: -1.4, max: 0.7 },
+  { el: document.querySelector('.lf-core'), f: 1, max: 1.0 },
+  { el: document.querySelector('.lf-streak'), f: 1, max: 0.65 },
+  { el: document.querySelector('.lf-ring-a'), f: -0.45, max: 0.75 },
+  { el: document.querySelector('.lf-ring-b'), f: -0.9, max: 0.8 },
+  { el: document.querySelector('.lf-dot'), f: -1.4, max: 0.9 },
 ];
 const input = createInput(container, els);
 if (isTouch) document.body.classList.add('touch');
