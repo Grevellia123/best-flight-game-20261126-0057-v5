@@ -1,5 +1,28 @@
 # TALON STRIKE — Changelog
 
+## v5.14 — 27 November 2026
+
+### Smaller reticle, smooth coastline, antialiasing setting
+- The aim reticle (cursor) is smaller again: ring 20 → 12 px
+  (16 px when locked), shorter ticks, smaller centre dot and lock
+  arc; the hit marker shrank with it. This is the v5.12 size, but
+  without the v5.12 performance changes — those stay revoked.
+- Smooth coastline: the high-frequency hills used to make the
+  shoreline a jagged staircase on the 80 m terrain mesh, and the
+  shallow waterline crawled and shimmered — "vibrated" — as the
+  plane flew. The hills now fade out where the smooth terrain is
+  near sea level, but only near water (the coast strip and the
+  river banks), so inland valleys keep their hills. The shoreline
+  now follows the smooth low-frequency field: measured roughness
+  of the traced shore halved (100 m → 53 m), and the inland hills
+  are unchanged.
+- Antialiasing setting: the settings panel has a new
+  ANTIALIASING button — AUTO (on for HIGH only, as before), ON or
+  OFF. It smooths jagged edges on the coastline, runway and jet.
+  It is saved like the other settings, and it takes effect when
+  you reopen the game (WebGL fixes it when the game loads). If ON
+  feels slow on a phone, set it back to AUTO.
+
 ## v5.13 — 27 November 2026
 
 ### Reverted v5.12

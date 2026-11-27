@@ -181,12 +181,16 @@ function buildTerrainTiles(seed) {
   return tiles;
 }
 
-export function createScene(container, qualityName) {
+export function createScene(container, qualityName, aaSetting = 'auto') {
   // MSAA (antialias) is a big fill-rate cost on tiled mobile GPUs and the
-  // bloom pass softens edges anyway — only High renders with it. It is
-  // fixed at context creation, so a later switch to High keeps the
-  // current antialias setting; the step-down never needs it.
-  const renderer = new THREE.WebGLRenderer({ antialias: qualityName === 'high', powerPreference: 'high-performance' });
+  // bloom pass softens edges anyway — so by default (AUTO) only High
+  // renders with it. The settings panel lets the player force it ON or
+  // OFF on any quality. It is fixed at context creation, so a later
+  // switch to High keeps the current antialias setting, and a changed
+  // AA setting only takes effect when the game next loads; the step-down
+  // never needs it.
+  const wantAA = aaSetting === 'on' ? true : aaSetting === 'off' ? false : qualityName === 'high';
+  const renderer = new THREE.WebGLRenderer({ antialias: wantAA, powerPreference: 'high-performance' });
   renderer.setSize(container.clientWidth, container.clientHeight);
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, CFG.quality[qualityName].pixelRatio));
   renderer.outputColorSpace = THREE.SRGBColorSpace;

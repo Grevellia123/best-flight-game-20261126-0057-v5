@@ -14,8 +14,8 @@ export function riverZ(x) {
 export function terrainHeight(x, z) {
   const S = CFG.world.size / 2;
   const cx = clamp(x, -S, S), cz = clamp(z, -S, S);
+  // Smooth base field first (low-frequency fbm only, 2,222 m wavelength).
   let h = 40 + fbm2(cx * 0.00045 + 3.1, cz * 0.00045 + 8.7, SEED) * 110;
-  h += Math.max(0, fbm2(cx * 0.0016, cz * 0.0016, SEED + 5)) * 130;
   // River channel carves down to the water.
   const rz = riverZ(cx);
   const rd = Math.abs(cz - rz);
@@ -25,6 +25,23 @@ export function terrainHeight(x, z) {
     const t = clamp((cz - CFG.world.seaStartZ) / 900, 0, 1);
     h = lerp(h, -14, t * t * (3 - 2 * t));
   }
+  // v5.14: fade the high-frequency hills out where the smooth terrain is
+  // near sea level — but ONLY near water (the coast strip and the river
+  // banks). Their 625 m / 293 m wiggle made the coastline a jagged
+  // staircase on the 80 m terrain mesh, and the shallow waterline
+  // crawled and shimmered — "vibrated" — as the plane flew. The fade is
+  // zoned so inland valleys keep their hills: a height-only fade would
+  // have flattened every low valley on the map. With the detail faded,
+  // the shoreline follows the smooth low-frequency field.
+  const st = clamp((h - 2) / 20, 0, 1);
+  const heightFade = st * st * (3 - 2 * st); // 0 at/below sea level, 1 by 22 m up
+  const zc = clamp((cz - 3400) / 900, 0, 1);
+  const zoneCoast = zc * zc * (3 - 2 * zc); // 0 north of the coast, 1 in the sea
+  const zr = clamp(1 - rd / 200, 0, 1);
+  const zoneRiver = zr * zr * (3 - 2 * zr); // 1 at the river, 0 beyond 200 m
+  const zone = Math.max(zoneCoast, zoneRiver);
+  const shore = 1 - zone * (1 - heightFade);
+  h += Math.max(0, fbm2(cx * 0.0016, cz * 0.0016, SEED + 5)) * 130 * shore;
   // Home runway plateau around the origin so the strip sits flat.
   const hd = Math.hypot(cx, cz);
   if (hd < 700) h = lerp(6, h, Math.max(0, (hd - 250) / 450));

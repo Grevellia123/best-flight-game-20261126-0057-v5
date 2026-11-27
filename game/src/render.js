@@ -240,26 +240,28 @@ export function drawHud(els, world, opts) {
         g.stroke();
       }
     }
-    // Reticle.
+    // Reticle — v5.14: smaller again (the big 20 px ring from the v5.13
+    // revert read too large; this is the v5.12 size, without the v5.12
+    // performance changes).
     const locked = world.lockTarget && world.lockProgress >= 1;
     g.strokeStyle = locked ? '#ff4030' : 'rgba(140, 230, 255, 0.9)';
-    g.lineWidth = locked ? 2.5 : 1.8;
-    const rr = locked ? 26 : 20;
+    g.lineWidth = locked ? 2 : 1.5;
+    const rr = locked ? 16 : 12;
     g.beginPath(); g.arc(cx, cy, rr, 0, Math.PI * 2); g.stroke();
     g.beginPath();
     for (const [dx, dy] of [[0, -1], [0, 1], [-1, 0], [1, 0]]) {
-      g.moveTo(cx + dx * (rr + 4), cy + dy * (rr + 4));
-      g.lineTo(cx + dx * (rr + 12), cy + dy * (rr + 12));
+      g.moveTo(cx + dx * (rr + 3), cy + dy * (rr + 3));
+      g.lineTo(cx + dx * (rr + 9), cy + dy * (rr + 9));
     }
     g.stroke();
     g.fillStyle = locked ? '#ff4030' : 'rgba(140, 230, 255, 0.9)';
-    g.beginPath(); g.arc(cx, cy, 2.2, 0, Math.PI * 2); g.fill();
+    g.beginPath(); g.arc(cx, cy, 1.6, 0, Math.PI * 2); g.fill();
     // Lock progress arc.
     if (world.lockTarget && world.lockProgress > 0 && world.lockProgress < 1) {
       g.strokeStyle = '#ffc020';
-      g.lineWidth = 3;
+      g.lineWidth = 2.5;
       g.beginPath();
-      g.arc(cx, cy, rr + 8, -Math.PI / 2, -Math.PI / 2 + world.lockProgress * Math.PI * 2);
+      g.arc(cx, cy, rr + 6, -Math.PI / 2, -Math.PI / 2 + world.lockProgress * Math.PI * 2);
       g.stroke();
     }
     // Target boxes.
@@ -286,8 +288,8 @@ export function drawHud(els, world, opts) {
     // Hit marker flash.
     if (opts.hitFlash > 0) {
       g.strokeStyle = `rgba(255, 255, 255, ${Math.min(1, opts.hitFlash * 3)})`;
-      g.lineWidth = 2.5;
-      const m = 10;
+      g.lineWidth = 2;
+      const m = 7;
       g.beginPath();
       g.moveTo(cx - m, cy - m); g.lineTo(cx - m * 0.4, cy - m * 0.4);
       g.moveTo(cx + m, cy - m); g.lineTo(cx + m * 0.4, cy - m * 0.4);

@@ -40,6 +40,10 @@ const settings = {
   muted: saved.muted === true,
   musicVol: typeof saved.musicVol === 'number' ? saved.musicVol : 1,
   sfxVol: typeof saved.sfxVol === 'number' ? saved.sfxVol : 1,
+  // Antialiasing: 'auto' (on for HIGH only, as before), 'on' or 'off'.
+  // WebGL fixes antialias at context creation, so this applies when the
+  // game next loads — see createScene.
+  aa: ['auto', 'on', 'off'].includes(saved.aa) ? saved.aa : 'auto',
 };
 // A saved High from an earlier session is capped to Medium on low-end
 // hardware — starting on High there is exactly the jerk the user reported.
@@ -106,7 +110,7 @@ window.addEventListener('pointerup', unlockAudio);
 
 let scene;
 try {
-  scene = createScene(container, settings.quality);
+  scene = createScene(container, settings.quality, settings.aa);
 } catch (err) {
   $('webgl-error').style.display = 'flex';
   $('webgl-error').textContent = 'WebGL is not available in this browser — TALON STRIKE needs it to fly.';
@@ -371,6 +375,19 @@ document.querySelectorAll('#quality-group .q-btn').forEach((b) => {
     audio.click();
   });
 });
+// Antialiasing: AUTO → ON → OFF. Applies at renderer creation, so it
+// takes effect when the game next loads — the note in the panel says so.
+// It persists like the other settings.
+const AA_ORDER = ['auto', 'on', 'off'];
+function updateAAUI() {
+  $('aa-setting').textContent = `ANTIALIASING: ${settings.aa.toUpperCase()}`;
+}
+$('aa-setting').addEventListener('click', () => {
+  settings.aa = AA_ORDER[(AA_ORDER.indexOf(settings.aa) + 1) % AA_ORDER.length];
+  saveSettings();
+  updateAAUI();
+  audio.click();
+});
 // Sound sliders: live (musicGain / sfxGain) and persisted.
 const musicVolEl = $('music-vol'), sfxVolEl = $('sfx-vol');
 musicVolEl.value = Math.round(settings.musicVol * 100);
@@ -397,6 +414,7 @@ $('mute-setting').addEventListener('click', toggleMute);
 $('cam-setting').addEventListener('click', toggleCam);
 updateMuteUI();
 updateQualityUI();
+updateAAUI();
 $('cam-setting').textContent = `CAMERA: ${settings.camMode.toUpperCase()}`;
 $('btn-cam').textContent = settings.camMode === 'cockpit' ? 'CHASE' : 'COCKPIT';
 if (settings.camMode === 'cockpit') $('cockpit-frame').style.display = 'block';
