@@ -420,8 +420,10 @@ document.querySelectorAll('.jet-card').forEach((b) => {
   b.addEventListener('click', () => setJet(b.dataset.jet));
 });
 // Lobby menu: HANGAR and SETTINGS open their panel under the menu (tap
-// again to close); opening one closes the other. The waves / controls
-// lines at the bottom hide while a panel is open (see .panel-open).
+// again to close); opening one closes the other. While a panel is open
+// the PLAY / HANGAR / SETTINGS buttons hide (see .panel-open) and the
+// panel's own ✕ brings the menu back; the waves / controls lines at
+// the bottom hide too.
 function setLobbyPanel(which) {
   lobbyPanel = lobbyPanel === which ? null : which;
   hangarPanel.hidden = lobbyPanel !== 'hangar';
@@ -433,6 +435,19 @@ function setLobbyPanel(which) {
 }
 $('btn-hangar').addEventListener('click', () => setLobbyPanel('hangar'));
 $('btn-lobby-settings').addEventListener('click', () => setLobbyPanel('settings'));
+// The menu buttons hide while a panel is open, so each panel closes
+// with its own ✕. The settings panel also lives in the pause screen,
+// where the ✕ closes it and resets the pause SETTINGS button's label.
+$('btn-close-hangar').addEventListener('click', () => setLobbyPanel(null));
+$('btn-close-settings').addEventListener('click', () => {
+  if (settingsPanel.parentElement === screens.pause) {
+    settingsPanel.style.display = 'none';
+    $('btn-pause-settings').textContent = '⚙ SETTINGS';
+    audio.click();
+  } else {
+    setLobbyPanel(null);
+  }
+});
 // Antialiasing: AUTO → ON → OFF. Applies at renderer creation, so it
 // takes effect when the game next loads — the note in the panel says so.
 // It persists like the other settings.

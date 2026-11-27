@@ -1,5 +1,10 @@
 # TALON STRIKE — Changelog
 
+## v5.22 — 27 November 2026
+
+### Menu buttons hide while a lobby panel is open
+- While HANGAR or SETTINGS is open, the PLAY / HANGAR / SETTINGS buttons now hide, so the panel has the lobby to itself and the jet shows big on the right. Each panel has its own ✕ at the top-right to close it and bring the menu back. The ✕ on the settings panel also works on the pause screen, where it closes the panel and puts the pause SETTINGS button back to ⚙ SETTINGS. The title, the fullscreen button and the jet stay where they are.
+
 ## v5.21 — 27 November 2026
 
 ### Settings panel no longer cuts the menu off, jet stays in the lobby, sharper picture

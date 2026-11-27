@@ -209,6 +209,13 @@
     padding: 12px 16px 14px; display: flex; flex-direction: column; gap: 12px; text-align: left;
   }
   .settings-title { font-size: 11px; letter-spacing: 0.42em; color: var(--gold); font-weight: 700; text-align: center; }
+  /* Panel header row: the label/title takes the space, the ✕ closes the
+     panel and brings the menu back — the menu buttons hide while a
+     panel is open, so the panel needs its own way to close. */
+  .panel-head { display: flex; align-items: center; gap: 8px; }
+  .panel-head .settings-label, .panel-head .settings-title { flex: 1; }
+  .panel-close { pointer-events: auto; cursor: pointer; flex-shrink: 0; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; font: 700 15px ui-monospace, monospace; color: var(--hud); background: transparent; border: 1px solid rgba(255,255,255,0.25); border-radius: 2px; }
+  .panel-close:active { background: rgba(140,220,255,0.25); }
   .settings-section { display: flex; flex-direction: column; gap: 8px; }
   .settings-label { font-size: 11px; letter-spacing: 0.2em; color: var(--hud-dim); font-weight: 700; }
   .slider-row { display: flex; align-items: center; gap: 10px; }
@@ -399,6 +406,10 @@
   /* An open panel eats the bottom of the screen on short phones, so the
      waves / controls lines hide while HANGAR or SETTINGS is open. */
   #title-screen.panel-open .lobby-waves, #title-screen.panel-open .lobby-controls { display: none; }
+  /* While a panel is open the PLAY / HANGAR / SETTINGS buttons hide too,
+     so the panel has the lobby to itself — the panel's own ✕ button
+     brings the menu back. */
+  #title-screen.panel-open .lobby-menu { display: none; }
   @media (max-height: 500px) {
     #title-screen { padding: 8px 16px; }
     .lobby-col { gap: 7px; width: min(420px, 94vw); }
@@ -479,7 +490,7 @@
     </div>
     <div id="lobby-panels">
       <div class="hangar-panel" id="hangar-panel" hidden>
-        <div class="settings-label">PICK YOUR FIGHTER</div>
+        <div class="panel-head"><div class="settings-label">PICK YOUR FIGHTER</div><button class="panel-close" id="btn-close-hangar" aria-label="Close">✕</button></div>
         <div class="settings-row">
           <button class="set-btn jet-card" data-jet="talon">T-7 TALON</button>
           <button class="set-btn jet-card" data-jet="f35">F-35 LIGHTNING II</button>
@@ -487,7 +498,7 @@
         <div class="settings-note">Pick your fighter — the T-7 Talon or the F-35 Lightning II. Switches right away, no need to reopen.</div>
       </div>
   <div class="settings-panel" id="settings-panel" style="display:none">
-    <div class="settings-title">SETTINGS</div>
+    <div class="panel-head"><div class="settings-title">SETTINGS</div><button class="panel-close" id="btn-close-settings" aria-label="Close">✕</button></div>
     <div class="settings-section">
       <div class="settings-label">SOUND</div>
       <div class="slider-row">
