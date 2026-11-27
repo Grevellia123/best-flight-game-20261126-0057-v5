@@ -349,7 +349,7 @@ export function createScene(container, qualityName, aaSetting = 'auto', jetModel
   // They follow the player like the sky dome (see sync()).
   const starGeo = new THREE.BufferGeometry();
   {
-    const N = 300, pos = new Float32Array(N * 3);
+    const N = 150, pos = new Float32Array(N * 3);
     const srng = mulberry32(1234);
     for (let i = 0; i < N; i++) {
       const a = srng() * Math.PI * 2, y = srng() * 0.95 + 0.05;

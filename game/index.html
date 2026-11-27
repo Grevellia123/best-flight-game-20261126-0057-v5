@@ -290,7 +290,7 @@
   .subtitle { font-size: 13px; letter-spacing: 0.18em; color: var(--hud-dim); }
   .big-btn {
     pointer-events: auto; cursor: pointer; margin-top: 6px;
-    font: 700 18px ui-monospace, monospace; letter-spacing: 0.14em; color: #101c24;
+    font: 700 18px ui-monospace, monospace; letter-spacing: 0.14em; color: var(--hud);
     /* "FLY THE SORTIE" wrapped to two lines on 360px phones (Android
        monospace runs wider than the 0.6em estimate, so 18px + 44px side
        padding overflowed the 312px column) and the second line was
@@ -298,10 +298,10 @@
        shrinks to 15px on phones, tighter side padding, and no wrapping. */
     font-size: clamp(15px, 4.2vw, 18px); letter-spacing: 0.1em;
     white-space: nowrap; max-width: 100%; line-height: 1.25;
-    background: linear-gradient(180deg, #5cb8ff, #2a7fff); border: none; border-radius: 8px;
-    padding: 16px 28px; min-height: 56px; box-shadow: 0 6px 24px rgba(42, 127, 255, 0.35);
+    background: transparent; border: 1px solid var(--panel-line); border-radius: 8px;
+    padding: 16px 28px; min-height: 56px;
   }
-  .big-btn:active { transform: translateY(1px); filter: brightness(1.25); }
+  .big-btn:active { transform: translateY(1px); background: rgba(127,212,255,0.35); border-color: var(--accent); }
   .ghost-btn {
     pointer-events: auto; cursor: pointer; font: 700 13px ui-monospace, monospace; letter-spacing: 0.1em;
     color: var(--hud); background: transparent; border: 1px solid var(--panel-line); border-radius: 6px;

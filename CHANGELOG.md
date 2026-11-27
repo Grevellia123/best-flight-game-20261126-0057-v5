@@ -1,5 +1,12 @@
 # TALON STRIKE — Changelog
 
+## v5.26 — 27 November 2026
+
+### RESUME is no longer blue, and it lights up when you press it
+- The RESUME button (and the FLY AGAIN buttons, which share the same style) were a solid blue block — the blue gradient left over from when the gold was removed. They are now the same dark button as RESTART, TITLE and SETTINGS, so the pause screen is one style.
+- Pressing RESUME now lights it up cyan, like every other button since v5.24 — before, its press only made the blue slightly brighter, which was hard to see.
+- Fewer stars again at night: 300 down to 150, so the sky is calmer still and the moon stands out more.
+
 ## v5.25 — 27 November 2026
 
 ### A real cockpit, like the reference
