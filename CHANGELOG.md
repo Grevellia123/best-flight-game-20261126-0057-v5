@@ -1,5 +1,10 @@
 # TALON STRIKE — Changelog
 
+## v5.38 — 28 November 2026
+
+### Smaller lens flare
+- The lens flare is toned down from v5.37 — smaller core, streak, rings and dot, and dimmer at full strength — so it still dazzles when you face the sun, but less overpowering.
+
 ## v5.37 — 28 November 2026
 
 ### Stronger lens flare, no aurora on medium

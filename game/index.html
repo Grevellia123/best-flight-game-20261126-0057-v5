@@ -112,13 +112,13 @@
      a screen-wide veil. Positions are set from JS every frame. */
   #lens-flare { position: fixed; inset: 0; z-index: 3; pointer-events: none; }
   #lens-flare .lf { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); opacity: 0; }
-  .lf-core { width: 190px; height: 190px; border-radius: 50%;
-    background: radial-gradient(circle, rgba(255,255,245,1) 0%, rgba(255,225,155,0.65) 45%, rgba(255,200,120,0) 72%); }
-  .lf-streak { width: 440px; height: 6px; border-radius: 3px;
+  .lf-core { width: 120px; height: 120px; border-radius: 50%;
+    background: radial-gradient(circle, rgba(255,255,245,1) 0%, rgba(255,225,155,0.55) 45%, rgba(255,200,120,0) 72%); }
+  .lf-streak { width: 320px; height: 4px; border-radius: 3px;
     background: linear-gradient(90deg, transparent, rgba(255,242,205,1), transparent); }
-  .lf-ring-a { width: 210px; height: 210px; border-radius: 50%; border: 3px solid rgba(175,228,255,0.95); box-shadow: 0 0 18px rgba(140,210,255,0.55) inset; }
-  .lf-ring-b { width: 112px; height: 112px; border-radius: 50%; border: 3px solid rgba(255,212,140,0.9); }
-  .lf-dot { width: 46px; height: 46px; border-radius: 50%;
+  .lf-ring-a { width: 160px; height: 160px; border-radius: 50%; border: 3px solid rgba(175,228,255,0.95); box-shadow: 0 0 18px rgba(140,210,255,0.55) inset; }
+  .lf-ring-b { width: 80px; height: 80px; border-radius: 50%; border: 3px solid rgba(255,212,140,0.9); }
+  .lf-dot { width: 32px; height: 32px; border-radius: 50%;
     background: radial-gradient(circle, rgba(195,238,255,1), rgba(140,200,255,0) 70%); }
   .hud-btn {
     pointer-events: auto; cursor: pointer;

@@ -874,7 +874,7 @@ export function createScene(container, qualityName, aaSetting = 'auto', jetModel
     // so it works on every graphics setting, unlike the post-process
     // god rays that vanish when post is shed.
     const sunFlareS = world.screen === 'play' && !handle.night
-      ? sstep(0.6, 0.9, facing) * (1 - sstep(0.7, 1.25, off))
+      ? sstep(0.68, 0.94, facing) * (1 - sstep(0.7, 1.25, off))
       : 0;
     handle.sunFlare = { x: sunUV.x, y: sunUV.y, s: sunFlareS };
     // ---- Frustum culling: do not render what the camera cannot see ----
