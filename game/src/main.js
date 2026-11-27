@@ -44,6 +44,9 @@ const settings = {
   // WebGL fixes antialias at context creation, so this applies when the
   // game next loads — see createScene.
   aa: ['auto', 'on', 'off'].includes(saved.aa) ? saved.aa : 'auto',
+  // Jet: 'talon' (T-7) or 'f35' (F-35 Lightning II). Swaps live via
+  // scene.setPlayerJet — no reload needed.
+  jet: ['talon', 'f35'].includes(saved.jet) ? saved.jet : 'talon',
 };
 // A saved High from an earlier session is capped to Medium on low-end
 // hardware — starting on High there is exactly the jerk the user reported.
@@ -110,7 +113,7 @@ window.addEventListener('pointerup', unlockAudio);
 
 let scene;
 try {
-  scene = createScene(container, settings.quality, settings.aa);
+  scene = createScene(container, settings.quality, settings.aa, settings.jet);
 } catch (err) {
   $('webgl-error').style.display = 'flex';
   $('webgl-error').textContent = 'WebGL is not available in this browser — TALON STRIKE needs it to fly.';
@@ -375,6 +378,21 @@ document.querySelectorAll('#quality-group .q-btn').forEach((b) => {
     audio.click();
   });
 });
+// Jet: T-7 TALON or F-35 LIGHTNING II. Swaps live — the scene rebuilds
+// the player jet on the spot, so the jet in the title orbit changes as
+// soon as you tap. It persists like the other settings.
+const JET_ORDER = ['talon', 'f35'];
+const JET_LABEL = { talon: 'T-7 TALON', f35: 'F-35 LIGHTNING II' };
+function updateJetUI() {
+  $('jet-setting').textContent = `JET: ${JET_LABEL[settings.jet]}`;
+}
+$('jet-setting').addEventListener('click', () => {
+  settings.jet = JET_ORDER[(JET_ORDER.indexOf(settings.jet) + 1) % JET_ORDER.length];
+  saveSettings();
+  scene.setPlayerJet(settings.jet);
+  updateJetUI();
+  audio.click();
+});
 // Antialiasing: AUTO → ON → OFF. Applies at renderer creation, so it
 // takes effect when the game next loads — the note in the panel says so.
 // It persists like the other settings.
@@ -415,6 +433,7 @@ $('cam-setting').addEventListener('click', toggleCam);
 updateMuteUI();
 updateQualityUI();
 updateAAUI();
+updateJetUI();
 $('cam-setting').textContent = `CAMERA: ${settings.camMode.toUpperCase()}`;
 $('btn-cam').textContent = settings.camMode === 'cockpit' ? 'CHASE' : 'COCKPIT';
 if (settings.camMode === 'cockpit') $('cockpit-frame').style.display = 'block';

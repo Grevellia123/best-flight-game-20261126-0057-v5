@@ -126,6 +126,79 @@ function buildJet({ body, accent, canopy, scale = 1 }) {
   return g;
 }
 
+// F-35 Lightning II, same builder style as buildJet: nose along local -z,
+// same overall size (~11 m long, 11.2 m span, scale 1.35) so the chase
+// camera, the hitboxes and the flame/glow the sync loop looks up by name
+// all work unchanged. What makes it an F-35: a wider faceted fuselage
+// (8-segment cylinder, stealth flat panels), a trapezoidal wing with a
+// straight trailing edge instead of the Talon's delta, tails canted
+// further out, a flush canopy and side DSI intake bumps instead of a
+// belly intake.
+function buildF35({ body, accent, canopy, scale = 1 }) {
+  const g = new THREE.Group();
+  const matBody = new THREE.MeshStandardMaterial({ color: body, metalness: 0.55, roughness: 0.45 });
+  const matAccent = new THREE.MeshStandardMaterial({ color: accent, metalness: 0.4, roughness: 0.5 });
+  const matDark = new THREE.MeshStandardMaterial({ color: 0x2a2f36, metalness: 0.6, roughness: 0.5 });
+  const matGlass = new THREE.MeshStandardMaterial({ color: canopy, metalness: 0.9, roughness: 0.12 });
+
+  // Faceted fuselage: 8 segments read as stealth flat panels.
+  const fus = new THREE.Mesh(new THREE.CylinderGeometry(1.3, 1.45, 7.2, 8), matBody);
+  fus.rotation.x = Math.PI / 2; g.add(fus);
+  const nose = new THREE.Mesh(new THREE.ConeGeometry(1.3, 3.4, 8), matBody);
+  nose.rotation.x = -Math.PI / 2; nose.position.z = -5.3; g.add(nose);
+  // Trapezoidal wing: swept leading edge, straight trailing edge.
+  const wingShape = new THREE.Shape();
+  wingShape.moveTo(0, 2.2); wingShape.lineTo(5.6, -0.6); wingShape.lineTo(5.6, -2.0);
+  wingShape.lineTo(0, -2.0); wingShape.closePath();
+  const wingGeo = new THREE.ExtrudeGeometry(wingShape, { depth: 0.28, bevelEnabled: false });
+  const wingR = new THREE.Mesh(wingGeo, matBody);
+  wingR.rotation.x = -Math.PI / 2; wingR.position.y = -0.1; g.add(wingR);
+  const wingL = new THREE.Mesh(wingGeo, matBody);
+  wingL.rotation.x = -Math.PI / 2; wingL.scale.x = -1;
+  wingL.position.y = -0.1; g.add(wingL);
+  // Twin tails, canted further out than the Talon's (~35 deg).
+  const finGeo = new THREE.BoxGeometry(0.22, 2.2, 2.0);
+  for (const s of [-1, 1]) {
+    const fin = new THREE.Mesh(finGeo, matBody);
+    fin.position.set(s * 1.6, 1.4, 3.6); fin.rotation.z = -s * 0.6; fin.rotation.y = s * 0.25; g.add(fin);
+    const finTip = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.6, 1.4), matAccent);
+    finTip.position.set(s * 2.05, 2.3, 3.6); finTip.rotation.z = -s * 0.6; g.add(finTip);
+  }
+  // Flush canopy, lower than the Talon's bubble.
+  const can = new THREE.Mesh(new THREE.SphereGeometry(0.95, 12, 10), matGlass);
+  can.scale.set(0.9, 0.55, 1.8); can.position.set(0, 0.8, -1.4); g.add(can);
+  // DSI intake bumps on the fuselage sides (no belly intake on an F-35).
+  const bumpGeo = new THREE.SphereGeometry(0.85, 10, 8);
+  for (const s of [-1, 1]) {
+    const bump = new THREE.Mesh(bumpGeo, matDark);
+    bump.scale.set(0.5, 0.9, 1.5); bump.position.set(s * 1.25, -0.2, -0.6); g.add(bump);
+  }
+  // Single big engine nozzle.
+  const nozzle = new THREE.Mesh(new THREE.CylinderGeometry(1.05, 1.25, 1.2, 10), matDark);
+  nozzle.rotation.x = Math.PI / 2; nozzle.position.z = 4.1; g.add(nozzle);
+  // Afterburner flame + engine glow: same names and positions as the
+  // Talon, so the sync loop's getObjectByName('flame'/'glow') just works.
+  const flameMat = new THREE.MeshBasicMaterial({ color: 0xffa040, transparent: true, opacity: 0.9 });
+  flameMat.color.multiplyScalar(1.6);
+  const flame = new THREE.Mesh(new THREE.ConeGeometry(0.85, 3.6, 10), flameMat);
+  flame.rotation.x = Math.PI / 2; flame.position.z = 6.2;
+  flame.name = 'flame';
+  g.add(flame);
+  const glowTex = glowTexture();
+  const glow = new THREE.Sprite(new THREE.SpriteMaterial({ map: glowTex, transparent: true, opacity: 0.7, depthWrite: false }));
+  glow.material.color.setRGB(1.8, 1.3, 0.8);
+  glow.scale.set(5, 5, 1); glow.position.z = 5.6; glow.name = 'glow';
+  g.add(glow);
+  g.scale.setScalar(scale);
+  return g;
+}
+
+// The player's jet: the T-7 Talon or the F-35 Lightning II.
+function buildPlayerJet(model) {
+  if (model === 'f35') return buildF35({ body: 0x8f979e, accent: 0x3d4450, canopy: 0x2e3d4a, scale: 1.35 });
+  return buildJet({ body: 0xd8dde2, accent: 0xe8622a, canopy: 0x2f6f8f, scale: 1.35 });
+}
+
 // Terrain as 5x5 tiles instead of one 12000m mesh. One mesh's bounding
 // sphere covered the whole world, so it always intersected the camera
 // frustum and all 45,000 triangles were drawn every frame, even the
@@ -196,7 +269,7 @@ function buildTerrainTiles(seed) {
   return tiles;
 }
 
-export function createScene(container, qualityName, aaSetting = 'auto') {
+export function createScene(container, qualityName, aaSetting = 'auto', jetModel = 'talon') {
   // MSAA (antialias) is a big fill-rate cost on tiled mobile GPUs and the
   // bloom pass softens edges anyway — so by default (AUTO) only High
   // renders with it. The settings panel lets the player force it ON or
@@ -302,7 +375,7 @@ export function createScene(container, qualityName, aaSetting = 'auto') {
   }
 
   // Player + enemy jets.
-  const playerJet = buildJet({ body: 0xd8dde2, accent: 0xe8622a, canopy: 0x2f6f8f, scale: 1.35 });
+  let playerJet = buildPlayerJet(jetModel);
   scene.add(playerJet);
   const enemyJetGeo = { body: 0x70767e, accent: 0xc22a2a, canopy: 0x1c2a33, scale: 1.35 };
   const enemyMeshes = new Map();
@@ -415,6 +488,25 @@ export function createScene(container, qualityName, aaSetting = 'auto') {
     clouds.forEach((c, i) => { c.userData.enabled = i < cfg.clouds; c.visible = c.userData.enabled; });
     if (resetPost) handle.setPostLevel(cfg.post);
     handle.resize();
+  };
+
+  // Swap the player's jet live (title-screen JET button) — no reload.
+  // The old group's geometries/materials are disposed: a swap that leaked
+  // a few GPU objects each tap would add up over a session. sync() reads
+  // playerJet from this closure, so it picks up the new group next frame.
+  handle.setPlayerJet = (model) => {
+    const next = buildPlayerJet(model);
+    scene.remove(playerJet);
+    playerJet.traverse((o) => {
+      if (o.geometry) o.geometry.dispose();
+      if (o.material) {
+        const mats = Array.isArray(o.material) ? o.material : [o.material];
+        for (const m of mats) { if (m.map) m.map.dispose(); m.dispose(); }
+      }
+    });
+    scene.add(next);
+    playerJet = next;
+    handle.playerJet = next;
   };
 
   // Project a world point to CSS pixels in the container (for the HUD overlay).

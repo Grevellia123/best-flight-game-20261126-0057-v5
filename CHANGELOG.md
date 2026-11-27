@@ -1,5 +1,19 @@
 # TALON STRIKE — Changelog
 
+## v5.16 — 27 November 2026
+
+### Pick your fighter: T-7 Talon or F-35 Lightning II
+- The settings panel has a new JET button. Tap it to switch
+  between the T-7 Talon and the F-35 Lightning II — it switches
+  right away, no need to reopen, and the game remembers your pick.
+- The F-35 is a new model built the same way as the Talon:
+  stealth grey, a wider faceted fuselage, a trapezoidal wing with
+  a straight trailing edge instead of the Talon's delta, tails
+  canted further out, a flush canopy, side intake bumps and one
+  big engine. Same size and same handling as the Talon, so the
+  camera, the flying and the enemies are all unchanged — only the
+  jet you fly looks different.
+
 ## v5.15 — 27 November 2026
 
 ### Smoother river banks and shorelines
