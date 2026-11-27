@@ -145,14 +145,11 @@
 
 ## 27 November 2026 — Sound, visuals, and mute
 
-- Bloom and god rays; Vector Locked BGM; real engine, gun, and missile
-  recordings; mute fix.
+- Bloom and god rays; Vector Locked BGM.
 - Audio assets added (BGM + engine/gun/missile).
-- Lobby BGM on first tap, audio primed at load; low-end performance — no
-  MSAA below High, capability-based default quality, faster step-down on
-  the title screen.
-- One-tap mute; settings panel with sound and resolution; Doppler on the
-  enemy engine, gun, missile, and flyby.
+- Audio primed at load; low-end performance — no MSAA below High,
+  capability-based default quality, faster step-down on the title screen.
+- Settings panel with sound and resolution.
 - Jet flyby sound added for enemy close passes.
 
 ## 27 November 2026 — Phone HUD fixes
