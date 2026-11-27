@@ -567,13 +567,21 @@ export function createScene(container, qualityName) {
         handle.camLook.lerp(desiredLook, 1 - Math.pow(0.001, dt));
       }
     } else {
-      // v5.8: chase camera pulled in close (30m → 20m behind, same ~14°
-      // look-down angle) so the jet fills the frame like a close chase
-      // view instead of sitting small in the distance. 20m puts the
-      // ~15m wingspan at ~44% of frame width at 16:9; the flame tip
-      // sits ~11m behind the jet, so the camera stays ~9m clear of it.
-      desiredPos.set(p.x - nose.x * 20, p.y - nose.y * 20 + 5.0, p.z - nose.z * 20);
-      desiredLook.set(p.x + nose.x * 80, p.y + nose.y * 80, p.z + nose.z * 80);
+      // v5.9: chase camera closer still (20m → 16m behind, same ~14°
+      // look-down angle) and the jet a little left of centre: the
+      // camera dollies right of the jet's line and the look point
+      // moves with it, so the view direction is unchanged and the jet
+      // reads left of frame. The dolly is scaled by the camera aspect
+      // so the shift is the same ~6% of frame width on every screen —
+      // a fixed 2m would be a little left at 16:9 but a quarter of
+      // the frame on a portrait phone. 16m puts the ~15m wingspan at
+      // ~44% of frame width at 16:9; the flame tip sits ~11m behind
+      // the jet, so the camera stays ~5m clear of it.
+      const halfW = 16 * Math.tan(31 * Math.PI / 180) * camera.aspect;
+      const dolly = 0.12 * halfW; // 6% of frame width at the jet's depth
+      _right.set(Math.cos(p.yaw), 0, -Math.sin(p.yaw));
+      desiredPos.set(p.x - nose.x * 16 + _right.x * dolly, p.y - nose.y * 16 + 4.0, p.z - nose.z * 16 + _right.z * dolly);
+      desiredLook.set(p.x + nose.x * 80 + _right.x * dolly, p.y + nose.y * 80, p.z + nose.z * 80 + _right.z * dolly);
       if (snap) { handle.camPos.copy(desiredPos); handle.camLook.copy(desiredLook); }
       else {
         handle.camPos.lerp(desiredPos, 1 - Math.pow(0.0001, dt));

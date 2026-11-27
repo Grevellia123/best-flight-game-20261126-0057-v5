@@ -122,6 +122,7 @@ const els = {
   heatBar: $('heat-bar'), heatText: $('heat-text'),
   mslText: $('msl-text'), stallWarn: $('stall-warn'), lockText: $('lock-text'),
   btnFire: $('btn-fire'), btnMsl: $('btn-msl'),
+  btnThrUp: $('btn-thr-up'), btnThrDown: $('btn-thr-down'),
   btnCam: $('btn-cam'), btnPause: $('btn-pause'), btnMute: $('btn-mute'),
 };
 const input = createInput(container, els);
@@ -137,8 +138,8 @@ const screens = { title: $('title-screen'), over: $('over-screen'), win: $('win-
 // moves into the pause screen so the same sound / camera / resolution
 // controls are reachable mid-sortie — no duplicate controls, no second
 // set of IDs, and the sliders keep working because they are looked up by
-// ID wherever the panel sits. It opens visible on pause (RESUME stays
-// above it) and moves back, reset to visible, on any other screen.
+// ID wherever the panel sits. It stays closed on pause (tap ⚙ SETTINGS
+// to open it) and moves back, reset to visible, on any other screen.
 const settingsPanel = $('settings-panel');
 function showScreen(name) {
   for (const [k, el] of Object.entries(screens)) el.style.display = k === name ? 'flex' : 'none';
@@ -147,8 +148,8 @@ function showScreen(name) {
   document.body.classList.toggle('on-title', name === 'title');
   if (name === 'pause') {
     screens.pause.appendChild(settingsPanel);
-    settingsPanel.style.display = '';
-    $('btn-pause-settings').textContent = '✕ SETTINGS';
+    settingsPanel.style.display = 'none';
+    $('btn-pause-settings').textContent = '⚙ SETTINGS';
   } else if (settingsPanel.parentElement !== screens.title) {
     screens.title.appendChild(settingsPanel);
     settingsPanel.style.display = '';

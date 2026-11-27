@@ -1,5 +1,25 @@
 # TALON STRIKE — Changelog
 
+## v5.9 — 27 November 2026
+
+### Touch throttle, closer chase camera, pause settings closed
+- Touch throttle: new THR ▲ / ▼ hold buttons beside the IAS tape, so
+  the speed can finally be changed on a phone — hold ▲ to speed up,
+  ▼ to slow down (same rate as Shift/Ctrl on a keyboard). Touch had
+  no throttle control at all, so the throttle sat at its 0.62 cruise
+  default and the IAS tape never moved — it read 377 kt for the whole
+  sortie. The tape itself was fine; the speed just never changed.
+- The chase camera is closer still: 20 m behind the jet to 16 m, at
+  the same look-down angle, and the jet sits a little left of centre
+  — the camera dollies right of the jet's line, so the jet reads
+  left of frame, by the same ~6% of the frame width on every screen
+  (a fixed distance would be a little left on a wide screen but a
+  quarter of the frame on a portrait phone). The jet now spans about
+  half the frame width at 16:9. The cockpit camera and the
+  title-screen orbit are unchanged.
+- The pause screen's settings panel now starts closed — tap
+  ⚙ SETTINGS to open it. It used to open on every pause.
+
 ## v5.8 — 27 November 2026
 
 ### Minimal HUD, jet up close
