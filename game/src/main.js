@@ -456,12 +456,19 @@ function drainEvents() {
       }
       case 'enemyGun': {
         // The shooter's pitch follows its own Doppler, not the nearest
-        // bandit's — match the bandit at the event position. Its crack
-        // is also panned to the shooter's side.
+        // bandit's — match the bandit at the event position. Its M4
+        // crack is panned hard to the shooter's side, and its level
+        // falls with distance, so a crossing bandit's fire sweeps
+        // across from one ear to the other.
         const shooter = enemyNear(ev.x, ev.y, ev.z);
+        const p = world.player;
+        const dist = shooter
+          ? Math.hypot(shooter.x - p.x, shooter.y - p.y, shooter.z - p.z)
+          : 400;
         audio.enemyGun(
           shooter ? radialVelOf(shooter) : 0,
           shooter ? panOf(shooter.x, shooter.y, shooter.z) : 0,
+          dist,
         );
         break;
       }

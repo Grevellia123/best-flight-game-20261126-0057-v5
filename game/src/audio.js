@@ -43,6 +43,8 @@ export function createAudio() {
   let enemySrc = null, enemyGain = null, enemyFilter = null;
   let enemyOsc1 = null, enemyOsc2 = null, enemyUseMp3 = false;
   let lastEnemyGunFreq = null, lastEnemyGunFactor = 1;
+  let lastEnemyGunSrc = null, lastEnemyGunPan = 0, lastEnemyGunPlay = -1;
+  let enemyGunPlays = 0;
   // Stereo pan for the nearest enemy: -1 = hard left, +1 = hard right,
   // 0 = centred. Doppler is pitch-only without this — a bandit passing
   // on your right would still sound dead centre.
@@ -445,15 +447,48 @@ export function createAudio() {
       noise(ctx.currentTime, 0.07, 0.22, 2400 * f, 'highpass', lastGunPan);
       tone(190 * f, ctx.currentTime, 0.05, 'square', 0.08, sfxGain);
     },
-    // Enemy gunfire: the crack's pitch follows the shooter's Doppler —
-    // higher while the bandit closes in, lower while it pulls away —
-    // and it is panned to the shooter's side (-1 left, +1 right).
-    enemyGun(radialVel, pan = 0) {
+    // Enemy M4 gunfire with Doppler + strong stereo panning. The
+    // crack is the same M4 recording as your own gun — not the old
+    // synth tick — played as a short 0.3 s slice (one crack) per shot,
+    // panned hard to the shooter's bearing (-1 left, +1 right) and
+    // pitched by the shooter's Doppler (higher closing, lower
+    // receding). Each burst re-pans, so as a bandit crosses in front
+    // of you its fire sweeps across from one ear to the other.
+    // Gain falls with distance, so a close bandit cracks loud on one
+    // side and a far one is a faint pop on that side.
+    enemyGun(radialVel, pan = 0, dist = 400) {
       if (!ctx) return;
       const f = dopplerFromRadial(radialVel);
       lastEnemyGunFactor = f;
+      lastEnemyGunPan = clampPan(pan);
       lastEnemyGunFreq = Math.max(900, Math.min(2400, 1400 * f));
-      noise(ctx.currentTime, 0.06, 0.07, lastEnemyGunFreq, 'bandpass', pan);
+      const t = ctx.currentTime;
+      // Enemy bursts fire every 0.11 s — allow one M4 crack per 0.09 s
+      // so a burst still sounds like a burst, without stacking voices.
+      if (t - lastEnemyGunPlay < 0.09) return;
+      lastEnemyGunPlay = t;
+      const distGain = Math.max(0.08, Math.min(0.45, 0.45 * (1 - (dist || 400) / 900)));
+      if (gunBuf) {
+        const src = ctx.createBufferSource();
+        src.buffer = gunBuf;
+        src.playbackRate.setValueAtTime(Math.max(0.9, Math.min(1.15, f)), t);
+        src.playbackRate.setTargetAtTime(Math.max(0.85, Math.min(1.05, f * 0.94)), t, 0.12);
+        const g = ctx.createGain();
+        g.gain.value = distGain;
+        const p = makePan(lastEnemyGunPan);
+        if (p) { g.connect(p); p.connect(sfxGain); } else g.connect(sfxGain);
+        src.connect(g);
+        // One crack only: the first 0.3 s of the burst file, not the
+        // whole 2.5 s clip — otherwise every enemy shot would replay
+        // two full bursts and stack into noise.
+        src.start(t, 0, 0.3);
+        lastEnemyGunSrc = src;
+        enemyGunPlays++;
+        return;
+      }
+      // Still loading or failed: synth fallback, panned the same way
+      // and louder than before so the pan is actually audible.
+      noise(t, 0.09, 0.12 * (distGain / 0.45), lastEnemyGunFreq, 'bandpass', lastEnemyGunPan);
     },
     // Close-pass flyby: called once when an enemy jet sweeps past the
     // player (main.js detects the closing-to-receding crossing while the
@@ -518,36 +553,42 @@ export function createAudio() {
         src.buffer = mslBuf;
         // Start near the Doppler pitch, easing down to the receding
         // pitch as the missile pulls away — 1.12x → 0.85x when the
-        // target is neither closing nor receding.
+        // target is neither closing nor receding. The fall is faster
+        // now (0.30 s, was 0.45 s) so the launch sounds snappier.
         src.playbackRate.setValueAtTime(Math.max(1.0, Math.min(1.15, f * 1.05)), t);
-        src.playbackRate.setTargetAtTime(Math.max(0.85, Math.min(1.0, f * 0.85)), t, 0.45);
-        // Lowered again: 0.5 gain (~-6 dB) was still too loud. 0.35
-        // (~-9 dB, about -3 dB more) keeps the launch audible without
-        // blasting over the engine and music.
+        src.playbackRate.setTargetAtTime(Math.max(0.85, Math.min(1.0, f * 0.85)), t, 0.30);
+        // Tightened: the 2.9 s whoosh used to play out in full at a
+        // flat 0.35 gain, so it lingered and washed over the engine.
+        // Now it holds full level for 0.15 s, then fades out by 1.4 s
+        // and is stopped at 1.5 s — a short, punchy launch, not a
+        // long tail. Same 0.35 peak level, just a much tighter shape.
         const g = ctx.createGain();
-        g.gain.value = 0.35;
+        g.gain.setValueAtTime(0.35, t);
+        g.gain.setValueAtTime(0.35, t + 0.15);
+        g.gain.exponentialRampToValueAtTime(0.001, t + 1.4);
         const p = makePan(lastMslPan);
         if (p) { g.connect(p); p.connect(sfxGain); } else g.connect(sfxGain);
         src.connect(g);
         src.start(t);
+        src.stop(t + 1.5);
         lastMslSrc = src;
         mslPlays++;
         return;
       }
       // Still loading or failed: synth fallback — a falling filter sweep,
-      // the same receding pitch as the recording, lowered to match.
+      // the same receding pitch as the recording, tightened to match.
       const t = ctx.currentTime;
       const src = ctx.createBufferSource(); src.buffer = noiseBuf;
       const f2 = ctx.createBiquadFilter(); f2.type = 'bandpass';
       f2.frequency.setValueAtTime(2400 * f, t);
-      f2.frequency.exponentialRampToValueAtTime(500, t + 0.55);
+      f2.frequency.exponentialRampToValueAtTime(500, t + 0.40);
       const g = ctx.createGain();
       g.gain.setValueAtTime(0.18, t);
-      g.gain.exponentialRampToValueAtTime(0.001, t + 0.55);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 0.40);
       const p = makePan(lastMslPan);
       src.connect(f2); f2.connect(g);
       if (p) { g.connect(p); p.connect(sfxGain); } else g.connect(sfxGain);
-      src.start(t); src.stop(t + 0.6);
+      src.start(t); src.stop(t + 0.45);
     },
     explosion(big) {
       if (!ctx) return;
@@ -614,6 +655,9 @@ export function createAudio() {
     get gunPan() { return lastGunPan; },
     get lastEnemyGunFreq() { return lastEnemyGunFreq; },
     get lastEnemyGunFactor() { return lastEnemyGunFactor; },
+    get enemyGunPan() { return lastEnemyGunPan; },
+    get enemyGunRate() { return lastEnemyGunSrc ? lastEnemyGunSrc.playbackRate.value : null; },
+    get enemyGunPlays() { return enemyGunPlays; },
     get flybyState() {
       if (flybyBuf) return 'mp3';
       if (flybyFailed) return 'fallback';

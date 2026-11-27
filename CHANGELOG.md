@@ -1,5 +1,23 @@
 # TALON STRIKE — Changelog
 
+## v5.4 — 27 November 2026
+
+### Tighter missile launch
+- The missile whoosh no longer lingers: same 0.35 peak level, but it
+  now holds full level for 0.15 s, fades out by 1.4 s, and is stopped
+  at 1.5 s instead of playing the full 2.9 s clip. The pitch fall is
+  faster too (0.30 s, was 0.45 s), so the launch sounds short and
+  punchy, not washy. The synth fallback is shortened to match.
+
+### Enemy M4 with panning
+- Enemy gunfire is now the same M4 recording as your own gun — a
+  short 0.3 s crack per shot — instead of the old synth tick.
+- It is panned hard to the shooter's side and re-panned every shot,
+  so a bandit crossing in front of you sweeps its fire from one ear
+  to the other. Pitch still follows the shooter's Doppler, and the
+  level now falls with distance: loud on one side up close, a faint
+  pop on that side from far away.
+
 ## v5.3 — 27 November 2026
 
 ### Doppler on the M4 gun and the missile
