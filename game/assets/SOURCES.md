@@ -21,15 +21,26 @@ They are loaded by `game/src/audio.js` (wiring done separately by the main agent
   refuses non-browser/API downloads without a free SFXMint API key, and no account was
   created for this task.
 
-## 2. machine-gun.mp3 — fighter cannon burst
-- File: MP3, 44.1 kHz stereo, 128 kbps, 2.0 s, 32,974 bytes
-- Source: "Machine Gun Burst 50 Cal" by Mike Koenig (50-caliber machine gun burst,
-  3 bursts) from https://soundbible.com/tags-machine-gun.html
-  (direct file: https://soundbible.com/mp3/Machine%20Gun%20Burst%2050%20Cal-SoundBible.com-1762114555.mp3)
-- License: Creative Commons Attribution 3.0 (CC-BY 3.0) — free for commercial use
-  with attribution to the author (Mike Koenig / SoundBible.com).
-- Shape check: sharp attack (first 0.1 s mean −5.0 dB, max 0.0 dB) decaying to near
-  silence at the tail (last 0.1 s mean −38.8 dB) — a clean burst, no loop needed.
+## 2. machine-gun.mp3 — fighter cannon burst (M4 rifle sound)
+- File: MP3, 44.1 kHz stereo, 128 kbps, 2.5 s, 41,004 bytes
+- Source: "M4 Carbine Rifle Gun Shot Sound Effect Loud" — classic M4 gunshot
+  sound effect, YouTube video https://youtu.be/Vpi2EBTAOjc
+  (Sound Effects Factory), chosen by the user by link.
+- License: per the video description, used under Creative Commons 0 (CC0) —
+  free to use, no attribution required. A free download is also listed at
+  https://soundeffectsfactory.com
+- Processing: the 14.8 s video is 4 bursts (peaks ~0.9 s, 2.5 s, 3.8 s, 4.8 s)
+  followed by ~8.5 s of silence. This file is the first two bursts,
+  trimmed 0.85–3.35 s, 50 ms fades in/out, loudness-normalized to
+  I=-20 LUFS, TP=-3.0 dB so it is not too loud (the source peaks at 0 dB).
+  Verified: mean −24.6 dB / max −7.9 dB, vs the old file's mean −8.0 dB /
+  max 0.0 dB — about 17 dB quieter. In-game the burst is played through a
+  0.7 gain in audio.js gun(), so it sits under the engine and music.
+- Replaces: "Machine Gun Burst 50 Cal" by Mike Koenig (SoundBible, CC-BY 3.0),
+  2.0 s, 32,974 bytes — replaced 2026-11-27 at the user's request.
+- Wiring: audio.js gun() plays it at most once per 0.45 s while the guns
+  fire at 16 shots/s; the synth noise burst is the fallback if the file
+  fails to load.
 
 ## 3. missile.mp3 — missile launch whoosh
 - File: MP3, 44.1 kHz mono, ~105 kbps overall, 2.9 s, 38,260 bytes

@@ -379,7 +379,14 @@ export function createAudio() {
           // Own gunfire: no Doppler (the guns move with you), just a
           // slight pitch wobble per burst so it doesn't sound mechanical.
           src.playbackRate.value = 0.97 + Math.random() * 0.06;
-          src.connect(sfxGain);
+          // Kept deliberately quiet: the M4 recording peaks at 0 dB in
+          // the source, and the file itself is already normalized to
+          // -20 LUFS. A 0.7 gain (~-3 dB) keeps bursts clearly audible
+          // without drowning the engine and the music.
+          const g = ctx.createGain();
+          g.gain.value = 0.7;
+          src.connect(g);
+          g.connect(sfxGain);
           src.start(t);
           gunPlays++;
         }
