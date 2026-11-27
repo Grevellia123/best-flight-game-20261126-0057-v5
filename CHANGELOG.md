@@ -1,5 +1,12 @@
 # TALON STRIKE — Changelog
 
+## v5.23 — 27 November 2026
+
+### No more yellow UI, lobby moved right, night mode
+- The gold is gone from the interface: the title, the CR score, the lock labels, the MSL button and the active buttons are now the same cyan as the rest of the HUD. The pause button is now plain ❚❚ instead of the orange emoji. The gold rings in the world, the engine flame and the sunset stay gold — they are the 3D world, not the interface.
+- The whole left side of the lobby — title, menu buttons and the lines at the bottom — sits a bit further right, on wide screens and on phones.
+- Night mode is here: a NIGHT MODE switch in Settings turns the sky dark, brings out the stars, and swaps the sun for a pale moon. The clouds go faint and dark, and the jet is lit by moonlight. It switches right away, no need to reopen, and it stays how you left it.
+
 ## v5.22 — 27 November 2026
 
 ### Menu buttons hide while a lobby panel is open

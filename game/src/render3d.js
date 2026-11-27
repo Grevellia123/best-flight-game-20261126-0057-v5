@@ -316,7 +316,8 @@ export function createScene(container, qualityName, aaSetting = 'auto', jetModel
   const sun = new THREE.DirectionalLight(0xffe2b0, 2.4);
   sun.position.copy(sunDir).multiplyScalar(100);
   scene.add(sun);
-  scene.add(new THREE.HemisphereLight(0xbcd7ff, 0x4a6741, 0.85));
+  const hemi = new THREE.HemisphereLight(0xbcd7ff, 0x4a6741, 0.85);
+  scene.add(hemi);
   // Sun disc + glow. Colour > 1: the sun is HDR so it blooms, and the
   // god-ray pass reads it out of the bloom texture.
   const glowTex = glowTexture();
@@ -325,6 +326,25 @@ export function createScene(container, qualityName, aaSetting = 'auto', jetModel
   sunSprite.position.copy(sunDir).multiplyScalar(8800);
   sunSprite.scale.set(1400, 1400, 1);
   scene.add(sunSprite);
+
+  // Stars for night mode: fixed points on the sky sphere, hidden by day.
+  // They follow the player like the sky dome (see sync()).
+  const starGeo = new THREE.BufferGeometry();
+  {
+    const N = 700, pos = new Float32Array(N * 3);
+    const srng = mulberry32(1234);
+    for (let i = 0; i < N; i++) {
+      const a = srng() * Math.PI * 2, y = srng() * 0.95 + 0.05;
+      const r = Math.sqrt(Math.max(0, 1 - y * y));
+      pos[i * 3] = Math.cos(a) * r * 9000;
+      pos[i * 3 + 1] = y * 9000;
+      pos[i * 3 + 2] = Math.sin(a) * r * 9000;
+    }
+    starGeo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  }
+  const stars = new THREE.Points(starGeo, new THREE.PointsMaterial({ color: 0xcfe4ff, size: 2.2, sizeAttenuation: false, transparent: true, opacity: 0.9, fog: false, depthWrite: false }));
+  stars.visible = false;
+  scene.add(stars);
 
   // Terrain + water. Terrain is tiled (see buildTerrainTiles) so
   // off-screen tiles can be culled instead of drawing the whole world.
@@ -366,6 +386,7 @@ export function createScene(container, qualityName, aaSetting = 'auto', jetModel
   const rng = mulberry32(99);
   for (let i = 0; i < 40; i++) {
     const s = new THREE.Sprite(new THREE.SpriteMaterial({ map: cloudTex, transparent: true, opacity: 0.75 + rng() * 0.2, depthWrite: false }));
+    s.userData.baseOpacity = s.material.opacity; // night mode scales this down
     s.position.set((rng() - 0.5) * 11000, 950 + rng() * 500, (rng() - 0.5) * 11000);
     s.scale.set(500 + rng() * 700, 180 + rng() * 160, 1);
     s.userData.drift = 2 + rng() * 4;
@@ -488,6 +509,40 @@ export function createScene(container, qualityName, aaSetting = 'auto', jetModel
     clouds.forEach((c, i) => { c.userData.enabled = i < cfg.clouds; c.visible = c.userData.enabled; });
     if (resetPost) handle.setPostLevel(cfg.post);
     handle.resize();
+  };
+
+  // Night mode: dark sky, stars, moonlight. Applied live — no reload.
+  // The sun sprite becomes the moon (smaller, pale, dimmer); the
+  // directional light drops to a cool moonlight and the hemisphere
+  // light dims, so the terrain and sea go dark on their own. Clouds
+  // go faint and dark. Day values are the ones set at creation above.
+  const DAY = {
+    sky: [0x3d6fb4, 0x9fc3dd, 0xf6c98a], fog: 0xdcc49c,
+    sun: [0xffe2b0, 2.4], hemi: [0xbcd7ff, 0x4a6741, 0.85],
+    moon: [2.2, 1.7, 1.2], moonScale: 1400, moonOpacity: 0.95,
+    cloudOpacity: 1, cloudColor: 0xffffff,
+  };
+  const NIGHT = {
+    sky: [0x050914, 0x0a1a33, 0x131c2e], fog: 0x070d1a,
+    sun: [0x8fb4ff, 0.7], hemi: [0x2a3f5f, 0x0d1a12, 0.35],
+    moon: [1.1, 1.25, 1.5], moonScale: 520, moonOpacity: 0.9,
+    cloudOpacity: 0.3, cloudColor: 0x5a6f8a,
+  };
+  handle.night = false;
+  handle.setNightMode = (on) => {
+    handle.night = !!on;
+    const m = on ? NIGHT : DAY;
+    skyMat.uniforms.top.value.setHex(m.sky[0]);
+    skyMat.uniforms.mid.value.setHex(m.sky[1]);
+    skyMat.uniforms.low.value.setHex(m.sky[2]);
+    scene.fog.color.setHex(m.fog);
+    sun.color.setHex(m.sun[0]); sun.intensity = m.sun[1];
+    hemi.color.setHex(m.hemi[0]); hemi.groundColor.setHex(m.hemi[1]); hemi.intensity = m.hemi[2];
+    sunSprite.material.color.setRGB(m.moon[0], m.moon[1], m.moon[2]);
+    sunSprite.scale.set(m.moonScale, m.moonScale, 1);
+    sunSprite.material.opacity = m.moonOpacity;
+    clouds.forEach((c) => { c.material.opacity = c.userData.baseOpacity * m.cloudOpacity; c.material.color.setHex(m.cloudColor); });
+    stars.visible = on;
   };
 
   // Swap the player's jet live (title-screen JET button) — no reload.
@@ -651,6 +706,7 @@ export function createScene(container, qualityName, aaSetting = 'auto', jetModel
     // Sun follows the player so it never leaves the sky.
     sunSprite.position.set(p.x + sunDir.x * 8800, p.y + sunDir.y * 8800, p.z + sunDir.z * 8800);
     sky.position.set(p.x, 0, p.z);
+    stars.position.set(p.x, 0, p.z);
 
     // Camera.
     const nose = {

@@ -114,7 +114,7 @@ function drawCompass(el, yaw) {
   }
   // Centre caret + readout.
   g.shadowBlur = 0;
-  g.fillStyle = '#ffb020';
+  g.fillStyle = '#7fd4ff';
   g.beginPath(); g.moveTo(cx - 6, 34); g.lineTo(cx + 6, 34); g.lineTo(cx, 42); g.fill();
   g.fillStyle = '#aee6ff';
   g.font = '700 13px ui-monospace, monospace';
@@ -160,12 +160,12 @@ function drawRadar(el, world) {
     g.arc(cx + sx, cy + sy, e.ace ? 4.5 : 3.5, 0, Math.PI * 2);
     g.fill();
     if (world.lockTarget === e) {
-      g.strokeStyle = '#ffd040';
+      g.strokeStyle = '#7fd4ff';
       g.beginPath(); g.arc(cx + sx, cy + sy, 7, 0, Math.PI * 2); g.stroke();
     }
   }
   // Rings.
-  g.fillStyle = 'rgba(255, 176, 32, 0.9)';
+  g.fillStyle = 'rgba(127, 212, 255, 0.9)';
   for (const r of world.rings) {
     if (r.passed) continue;
     const dx = r.x - p.x, dz = r.z - p.z;
@@ -193,7 +193,7 @@ export function drawHud(els, world, opts) {
 
   // Top-left info.
   setHtml(els.waveInfo,
-    `WAVE ${Math.max(1, world.wave)} / ${CFG.waves.length} &nbsp;·&nbsp; <span class="hide-narrow">KILLS ${world.kills} &nbsp;·&nbsp; </span><span class="gold">${world.score} CR</span>`);
+    `WAVE ${Math.max(1, world.wave)} / ${CFG.waves.length} &nbsp;·&nbsp; <span class="hide-narrow">KILLS ${world.kills} &nbsp;·&nbsp; </span><span class="accent">${world.score} CR</span>`);
   setText(els.waveSub, world.waveState === 'active' && world.wave > 0
     ? `${CFG.waves[world.wave - 1].name} — ${world.enemies.length} HOSTILES`
     : world.msg || '');
@@ -258,7 +258,7 @@ export function drawHud(els, world, opts) {
     g.beginPath(); g.arc(cx, cy, 1.6, 0, Math.PI * 2); g.fill();
     // Lock progress arc.
     if (world.lockTarget && world.lockProgress > 0 && world.lockProgress < 1) {
-      g.strokeStyle = '#ffc020';
+      g.strokeStyle = '#7fd4ff';
       g.lineWidth = 2.5;
       g.beginPath();
       g.arc(cx, cy, rr + 6, -Math.PI / 2, -Math.PI / 2 + world.lockProgress * Math.PI * 2);
@@ -271,10 +271,10 @@ export function drawHud(els, world, opts) {
       if (!pr || !pr.visible) continue;
       const s = clamp(900 / pr.dist, 0.5, 1.6) * 16;
       const isLock = world.lockTarget === e;
-      g.strokeStyle = e.ace ? '#ff5040' : (isLock ? '#ffc020' : 'rgba(255, 120, 90, 0.85)');
+      g.strokeStyle = e.ace ? '#ff5040' : (isLock ? '#7fd4ff' : 'rgba(255, 120, 90, 0.85)');
       g.lineWidth = isLock ? 2.2 : 1.4;
       g.strokeRect(pr.x - s, pr.y - s, s * 2, s * 2);
-      g.fillStyle = isLock ? '#ffd040' : 'rgba(255, 190, 170, 0.95)';
+      g.fillStyle = isLock ? '#7fd4ff' : 'rgba(255, 190, 170, 0.95)';
       g.textAlign = 'left';
       const label = `${e.name} · ${Math.round(pr.dist)}m`;
       g.fillText(label, pr.x + s + 5, pr.y - s + 4);

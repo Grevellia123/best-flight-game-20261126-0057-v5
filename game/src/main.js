@@ -47,6 +47,9 @@ const settings = {
   // Jet: 'talon' (T-7) or 'f35' (F-35 Lightning II). Swaps live via
   // scene.setPlayerJet — no reload needed.
   jet: ['talon', 'f35'].includes(saved.jet) ? saved.jet : 'talon',
+  // Night mode: dark sky, stars and moonlight. Applies live via
+  // scene.setNightMode — no reload needed.
+  night: saved.night === true,
 };
 // A saved High from an earlier session is capped to Medium on low-end
 // hardware — starting on High there is exactly the jerk the user reported.
@@ -114,6 +117,7 @@ window.addEventListener('pointerup', unlockAudio);
 let scene;
 try {
   scene = createScene(container, settings.quality, settings.aa, settings.jet);
+  scene.setNightMode(settings.night);
 } catch (err) {
   $('webgl-error').style.display = 'flex';
   $('webgl-error').textContent = 'WebGL is not available in this browser — TALON STRIKE needs it to fly.';
@@ -416,6 +420,18 @@ function setJet(model) {
 $('jet-setting').addEventListener('click', () => {
   setJet(JET_ORDER[(JET_ORDER.indexOf(settings.jet) + 1) % JET_ORDER.length]);
 });
+// Night mode: dark sky, stars and moonlight. Toggles live — the scene
+// relights on the spot, so the lobby and the flight go dark at once.
+function updateNightUI() {
+  $('night-setting').textContent = `NIGHT MODE: ${settings.night ? 'ON' : 'OFF'}`;
+}
+$('night-setting').addEventListener('click', () => {
+  settings.night = !settings.night;
+  saveSettings();
+  scene.setNightMode(settings.night);
+  updateNightUI();
+  audio.click();
+});
 document.querySelectorAll('.jet-card').forEach((b) => {
   b.addEventListener('click', () => setJet(b.dataset.jet));
 });
@@ -489,6 +505,7 @@ updateMuteUI();
 updateQualityUI();
 updateAAUI();
 updateJetUI();
+updateNightUI();
 $('cam-setting').textContent = `CAMERA: ${settings.camMode.toUpperCase()}`;
 $('btn-cam').textContent = settings.camMode === 'cockpit' ? 'CHASE' : 'COCKPIT';
 if (settings.camMode === 'cockpit') $('cockpit-frame').style.display = 'block';

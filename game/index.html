@@ -8,7 +8,7 @@
   :root {
     --hud: #aee6ff;
     --hud-dim: rgba(160, 210, 235, 0.75);
-    --gold: #ffb020;
+    --accent: #7fd4ff;
     --red: #ff5040;
     --panel: rgba(8, 18, 26, 0.62);
     --panel-line: rgba(140, 220, 255, 0.35);
@@ -43,7 +43,7 @@
     background: transparent; border-color: transparent; text-shadow: 0 1px 4px rgba(0,0,0,0.65);
   }
   #compass { flex: 1 1 120px; min-width: 120px; max-width: 320px; height: 56px; }
-  #wave-info .gold { color: var(--gold); }
+  #wave-info .accent { color: var(--accent); }
   /* Wave sub ("FIRST CONTACT — 3 HOSTILES"): tucked directly under the
      wave-info pill, same left edge, a few px below it — never centred,
      never floating with a gap. The topbar is 8px + the wave pill (~35px),
@@ -57,12 +57,12 @@
     position: absolute; top: calc(118px + env(safe-area-inset-top, 0px)); left: calc(12px + env(safe-area-inset-left, 0px));
     font-size: 11px; letter-spacing: 0.04em;
   }
-  .feed-line { padding: 3px 8px; margin-bottom: 3px; background: transparent; border-left: 2px solid var(--gold); text-shadow: 0 1px 4px rgba(0,0,0,0.65); animation: feedin 0.2s ease-out; }
+  .feed-line { padding: 3px 8px; margin-bottom: 3px; background: transparent; border-left: 2px solid var(--accent); text-shadow: 0 1px 4px rgba(0,0,0,0.65); animation: feedin 0.2s ease-out; }
   @keyframes feedin { from { opacity: 0; transform: translateX(-8px); } to { opacity: 1; } }
   #top-btns { flex: 0 0 auto; display: flex; gap: 8px; }
   #msg {
     position: absolute; top: calc(78px + env(safe-area-inset-top, 0px)); left: 50%; transform: translateX(-50%);
-    padding: 7px 18px; font-size: 13px; font-weight: 700; letter-spacing: 0.08em; color: #ffe9b0;
+    padding: 7px 18px; font-size: 13px; font-weight: 700; letter-spacing: 0.08em; color: var(--hud);
     background: transparent; border-color: transparent; text-shadow: 0 1px 6px rgba(0,0,0,0.7);
     transition: opacity 0.4s; white-space: nowrap; max-width: 92vw; overflow: hidden; text-overflow: ellipsis;
   }
@@ -84,7 +84,7 @@
   #fuel-bar.low { background: var(--red); }
   #hull-bar { width: 100%; background: #58d68a; }
   #hull-bar.low { background: var(--red); }
-  #heat-bar { width: 0%; background: var(--gold); }
+  #heat-bar { width: 0%; background: var(--accent); }
   #heat-bar.hot { background: var(--red); }
   .bar-row .val { width: 74px; text-align: right; }
   #msl-text.empty { color: var(--red); }
@@ -97,7 +97,7 @@
   }
   #lock-text {
     position: absolute; left: 50%; top: calc(50% + 34px); transform: translateX(-50%);
-    font-size: 13px; font-weight: 700; letter-spacing: 0.12em; color: #ffc020;
+    font-size: 13px; font-weight: 700; letter-spacing: 0.12em; color: var(--accent);
     text-shadow: 0 1px 6px rgba(0,0,0,0.8);
   }
   .hud-btn {
@@ -149,7 +149,7 @@
   }
   .touch-btn:active { background: rgba(140, 220, 255, 0.35); }
   #btn-fire { right: calc(18px + env(safe-area-inset-right, 0px)); bottom: calc(180px + env(safe-area-inset-bottom, 0px)); width: 84px; height: 84px; border-color: var(--red); color: #ffb0a0; }
-  #btn-msl { right: calc(116px + env(safe-area-inset-right, 0px)); bottom: calc(196px + env(safe-area-inset-bottom, 0px)); width: 64px; height: 64px; border-color: var(--gold); color: #ffe1a0; }
+  #btn-msl { right: calc(116px + env(safe-area-inset-right, 0px)); bottom: calc(196px + env(safe-area-inset-bottom, 0px)); width: 64px; height: 64px; border-color: var(--accent); color: var(--hud); }
   .touch-hint {
     position: absolute; left: 50%; bottom: calc(8px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%);
     font-size: 10px; letter-spacing: 0.08em; color: var(--hud-dim); white-space: nowrap;
@@ -174,9 +174,9 @@
      the button's bottom edge. With shrink off, the column scrolls
      instead of clipping, which is what overflow-y above is for. */
   .screen > * { flex-shrink: 0; }
-  .kicker { font-size: 12px; letter-spacing: 0.42em; color: var(--gold); font-weight: 700; }
+  .kicker { font-size: 12px; letter-spacing: 0.42em; color: var(--accent); font-weight: 700; }
   h1.title { font-size: clamp(44px, 9vw, 92px); line-height: 0.95; letter-spacing: 0.04em; color: #eaf7ff; text-shadow: 0 0 32px rgba(127, 212, 255, 0.45); }
-  h1.title .strike { color: var(--gold); }
+  h1.title .strike { color: var(--accent); }
   .subtitle { font-size: 13px; letter-spacing: 0.18em; color: var(--hud-dim); }
   .big-btn {
     pointer-events: auto; cursor: pointer; margin-top: 6px;
@@ -188,8 +188,8 @@
        shrinks to 15px on phones, tighter side padding, and no wrapping. */
     font-size: clamp(15px, 4.2vw, 18px); letter-spacing: 0.1em;
     white-space: nowrap; max-width: 100%; line-height: 1.25;
-    background: linear-gradient(180deg, #ffc84d, #ff9d1e); border: none; border-radius: 8px;
-    padding: 16px 28px; min-height: 56px; box-shadow: 0 6px 24px rgba(255, 157, 30, 0.35);
+    background: linear-gradient(180deg, #5cb8ff, #2a7fff); border: none; border-radius: 8px;
+    padding: 16px 28px; min-height: 56px; box-shadow: 0 6px 24px rgba(42, 127, 255, 0.35);
   }
   .big-btn:active { transform: translateY(1px); }
   .ghost-btn {
@@ -208,7 +208,7 @@
     background: var(--panel); border: 1px solid var(--panel-line); border-radius: 8px;
     padding: 12px 16px 14px; display: flex; flex-direction: column; gap: 12px; text-align: left;
   }
-  .settings-title { font-size: 11px; letter-spacing: 0.42em; color: var(--gold); font-weight: 700; text-align: center; }
+  .settings-title { font-size: 11px; letter-spacing: 0.42em; color: var(--accent); font-weight: 700; text-align: center; }
   /* Panel header row: the label/title takes the space, the ✕ closes the
      panel and brings the menu back — the menu buttons hide while a
      panel is open, so the panel needs its own way to close. */
@@ -220,10 +220,10 @@
   .settings-label { font-size: 11px; letter-spacing: 0.2em; color: var(--hud-dim); font-weight: 700; }
   .slider-row { display: flex; align-items: center; gap: 10px; }
   .slider-row label { width: 52px; flex: 0 0 auto; font-size: 11px; letter-spacing: 0.08em; color: var(--hud); }
-  .slider-row input[type="range"] { flex: 1; min-width: 0; accent-color: #ffb020; height: 24px; }
+  .slider-row input[type="range"] { flex: 1; min-width: 0; accent-color: var(--accent); height: 24px; }
   .slider-val { width: 42px; flex: 0 0 auto; text-align: right; font-size: 11px; color: var(--hud); }
   .settings-note { font-size: 10px; letter-spacing: 0.04em; color: var(--hud-dim); line-height: 1.5; }
-  .q-btn.active { background: rgba(255, 176, 32, 0.22); border-color: var(--gold); color: #ffe9b0; }
+  .q-btn.active { background: rgba(127, 212, 255, 0.22); border-color: var(--accent); color: var(--hud); }
   .set-btn {
     pointer-events: auto; cursor: pointer; font: 700 11px ui-monospace, monospace; letter-spacing: 0.08em;
     color: var(--hud); background: var(--panel); border: 1px solid var(--panel-line); border-radius: 6px;
@@ -235,7 +235,7 @@
   .debrief { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 28px; max-width: 460px; width: 100%; text-align: left; }
   .stat { display: flex; justify-content: space-between; padding: 8px 12px; background: var(--panel); border: 1px solid var(--panel-line); border-radius: 4px; font-size: 12px; }
   .stat span { color: var(--hud-dim); letter-spacing: 0.06em; }
-  .stat b { color: #ffe9b0; }
+  .stat b { color: var(--hud); }
   .btn-row { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; }
   #webgl-error { display: none; position: fixed; inset: 0; z-index: 50; align-items: center; justify-content: center; padding: 24px; background: #0a141c; color: #ffb0a0; font-size: 14px; text-align: center; }
   @media (max-width: 640px) {
@@ -350,7 +350,7 @@
      fully scrollable, when it doesn't. */
   #title-screen {
     align-items: flex-start; justify-content: flex-start; text-align: left;
-    padding: 24px clamp(20px, 5vw, 90px);
+    padding: 24px clamp(28px, 7vw, 110px);
     background:
       linear-gradient(90deg, rgba(5,10,16,0.55) 0%, rgba(5,10,16,0.18) 42%, rgba(5,10,16,0.04) 70%, rgba(5,10,16,0.10) 100%),
       radial-gradient(ellipse at 50% 30%, rgba(10,26,40,0.35) 0%, rgba(5,10,16,0.55) 100%);
@@ -369,7 +369,7 @@
     border: 1px solid rgba(255,255,255,0.28); border-radius: 2px;
   }
   .menu-btn:active { background: rgba(140,220,255,0.25); }
-  .menu-btn.active { border-color: var(--gold); background: rgba(255,176,32,0.22); color: #ffe9b0; }
+  .menu-btn.active { border-color: var(--accent); background: rgba(127,212,255,0.22); color: var(--hud); }
   /* PLAY is the same dark translucent button as HANGAR / SETTINGS —
      no gold: the yellow PLAY stood out from the reference menu, and
      the user asked for it removed. */
@@ -390,15 +390,15 @@
   /* display:flex above beats the hidden attribute's built-in display:none,
      so without this the hangar panel shows on load even while hidden. */
   .hangar-panel[hidden] { display: none; }
-  .jet-card.active { background: rgba(255,176,32,0.22); border-color: var(--gold); color: #ffe9b0; }
+  .jet-card.active { background: rgba(127,212,255,0.22); border-color: var(--accent); color: var(--hud); }
   .lobby-waves {
-    position: absolute; left: clamp(20px, 5vw, 90px); bottom: calc(36px + env(safe-area-inset-bottom, 0px));
+    position: absolute; left: clamp(28px, 7vw, 110px); bottom: calc(36px + env(safe-area-inset-bottom, 0px));
     font-size: 12px; letter-spacing: 0.1em; color: rgba(234,247,255,0.85);
     text-shadow: 0 1px 4px rgba(0,0,0,0.7); max-width: 92vw;
   }
-  .lobby-waves b { color: var(--gold); }
+  .lobby-waves b { color: var(--accent); }
   .lobby-controls {
-    position: absolute; left: clamp(20px, 5vw, 90px); bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+    position: absolute; left: clamp(28px, 7vw, 110px); bottom: calc(12px + env(safe-area-inset-bottom, 0px));
     font-size: 10px; letter-spacing: 0.04em; color: var(--hud-dim); line-height: 1.6;
     text-shadow: 0 1px 4px rgba(0,0,0,0.7); max-width: 92vw;
   }
@@ -411,14 +411,14 @@
      brings the menu back. */
   #title-screen.panel-open .lobby-menu { display: none; }
   @media (max-height: 500px) {
-    #title-screen { padding: 8px 16px; }
+    #title-screen { padding: 8px 28px; }
     .lobby-col { gap: 7px; width: min(420px, 94vw); }
     #title-screen h1.title { font-size: clamp(26px, 8vh, 40px); }
     #title-screen .subtitle { font-size: 10px; letter-spacing: 0.1em; }
     #title-screen .kicker { font-size: 10px; letter-spacing: 0.3em; }
     .lobby-menu { gap: 8px; margin-top: 2px; }
     .menu-btn { width: 240px; height: 44px; font-size: 16px; }
-    .lobby-waves { bottom: calc(8px + env(safe-area-inset-bottom, 0px)); font-size: 10px; left: 16px; }
+    .lobby-waves { bottom: calc(8px + env(safe-area-inset-bottom, 0px)); font-size: 10px; left: 28px; }
     .lobby-controls { display: none; }
     .hangar-panel, .settings-panel { padding: 10px 12px; gap: 8px; }
   }
@@ -446,12 +446,12 @@
 <div id="hud">
   <canvas id="overlay"></canvas>
   <div id="topbar">
-    <div id="wave-info" class="panel">WAVE 1 / 5 · <span class="hide-narrow">KILLS 0 · </span><span class="gold">0 CR</span></div>
+    <div id="wave-info" class="panel">WAVE 1 / 5 · <span class="hide-narrow">KILLS 0 · </span><span class="accent">0 CR</span></div>
     <canvas id="compass"></canvas>
     <div id="top-btns">
       <button class="hud-btn" id="btn-cam">COCKPIT</button>
       <button class="hud-btn" id="btn-mute">🔊</button>
-      <button class="hud-btn" id="btn-pause">⏸</button>
+      <button class="hud-btn" id="btn-pause">❚❚</button>
       <button class="hud-btn" id="btn-full">⛶</button>
     </div>
   </div>
@@ -464,7 +464,7 @@
     <div class="bar-row"><label id="fuel-text">FUEL 100%</label><div class="bar"><div id="fuel-bar"></div></div></div>
     <div class="bar-row"><label id="hull-text">HULL 100%</label><div class="bar"><div id="hull-bar"></div></div></div>
     <div class="bar-row"><label id="heat-text">GUN HEAT 0%</label><div class="bar"><div id="heat-bar"></div></div></div>
-    <div class="bar-row"><label id="msl-text">MSL 6 ×</label><div class="bar"><div style="width:100%;background:rgba(255,176,32,0.55)"></div></div></div>
+    <div class="bar-row"><label id="msl-text">MSL 6 ×</label><div class="bar"><div style="width:100%;background:rgba(127,212,255,0.55)"></div></div></div>
   </div>
   <canvas id="radar"></canvas>
   <div id="stall-warn">⚠ STALL — THROTTLE UP</div>
@@ -539,6 +539,13 @@
         <button class="set-btn" id="jet-setting">JET: T-7 TALON</button>
       </div>
       <div class="settings-note">Pick your fighter — the T-7 Talon or the F-35 Lightning II. Switches right away, no need to reopen.</div>
+    </div>
+    <div class="settings-section">
+      <div class="settings-label">NIGHT MODE</div>
+      <div class="settings-row">
+        <button class="set-btn" id="night-setting">NIGHT MODE: OFF</button>
+      </div>
+      <div class="settings-note">Dark sky, stars and moonlight. Switches right away, no need to reopen.</div>
     </div>
   </div>
     </div>
