@@ -40,7 +40,10 @@ They are loaded by `game/src/audio.js` (wiring done separately by the main agent
   2.0 s, 32,974 bytes — replaced 2026-11-27 at the user's request.
 - Wiring: audio.js gun() plays it at most once per 0.45 s while the guns
   fire at 16 shots/s; the synth noise burst is the fallback if the file
-  fails to load.
+  fails to load. Since v5.3 the burst has Doppler + stereo pan: its
+  pitch follows the target bandit's radial velocity (closing = higher,
+  receding = lower) and sweeps down ~8% as it flies downrange, panned
+  to the target's bearing.
 
 ## 3. missile.mp3 — missile launch whoosh
 - File: MP3, 44.1 kHz mono, ~105 kbps overall, 2.9 s, 38,260 bytes
@@ -53,9 +56,12 @@ They are loaded by `game/src/audio.js` (wiring done separately by the main agent
 - Caveat: the file is mono and carries an embedded ID3 cover image (a PNG stream);
   both decode fine in browsers, but if the game's decoder is strict, strip the image
   (`ffmpeg -i missile.mp3 -map 0:a -c copy missile-clean.mp3`) and/or upmix to stereo.
-- Wiring: audio.js missile() plays it through a 0.5 gain (lowered 2026-11-27
-  at the user's request — the launch whoosh was too loud); the synth
-  fallback is lowered to 0.25 to match.
+- Wiring: audio.js missile() plays it through a 0.35 gain (lowered
+  2026-11-27 at the user's request — 0.5 in v5.2 was still too loud;
+  the synth fallback is lowered to 0.18 to match). Since v5.3 the
+  launch has Doppler + stereo pan: it starts near the target bandit's
+  Doppler pitch, panned to the target's bearing, then falls to the
+  receding pitch as the missile pulls away.
 
 ## 4. jet-flyby.mp3 — enemy jet close-pass whoosh
 - File: MP3, 44.1 kHz stereo, 192 kbps, 3.4 s, 83,426 bytes

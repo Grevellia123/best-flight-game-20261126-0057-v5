@@ -1,5 +1,37 @@
 # TALON STRIKE — Changelog
 
+## v5.3 — 27 November 2026
+
+### Doppler on the M4 gun and the missile
+- The M4 burst now has Doppler, like the enemy gun: its pitch follows
+  the bandit you're shooting at — higher while the bandit closes in,
+  lower while it pulls away — and it is panned to the target's side.
+  Even with no lock, each burst sweeps down as it flies downrange.
+- The missile launch now has true Doppler too, not just a fixed fall:
+  it starts near the target's Doppler pitch (higher at a closing
+  bandit, lower at one running away), is panned to the target's side,
+  then falls to the receding pitch as it pulls away from you.
+
+### Quieter missiles — again
+- The missile launch is lowered again, from 0.5 gain to 0.35 (about
+  −9 dB, roughly −3 dB quieter than v5.2). The synth fallback is
+  lowered to match (0.25 → 0.18).
+
+### Lobby music no longer needs SOUND ON
+- Background music now starts on your first tap anywhere — scrolling
+  to Settings, tapping the title, dragging a volume slider. It used
+  to stay silent until you pressed SOUND ON, because on Android the
+  first touch is often a scroll drag and Chrome swallows that resume.
+  The unlock now retries for 3 seconds after a gesture, listens for
+  touchstart / touchend / pointerup as well, and (re)starts the track
+  the moment audio actually starts running.
+- Pressing SOUND ON when it already says SOUND ON no longer mutes the
+  game. If the lobby is silent but the setting is ON, that tap now
+  just turns the sound on. It only toggles OFF once the music is
+  actually playing.
+- The Settings panel now says so: "Music starts on your first tap
+  anywhere — you don't need to press SOUND ON."
+
 ## v5.2 — 27 November 2026
 
 ### Quieter missiles

@@ -173,7 +173,13 @@ function fireGuns(w) {
   p.heat = Math.min(100, p.heat + CFG.player.gunHeatPerShot);
   if (p.heat >= 100) p.overheated = true;
   w.shotsFired += 2;
-  w.events.push({ type: 'gun' });
+  // The gun's Doppler follows the bandit being shot at: main.js reads
+  // tx/ty/tz, finds that bandit, and passes its radial velocity + pan.
+  const lt = w.lockTarget;
+  w.events.push({
+    type: 'gun', x: p.x, y: p.y, z: p.z,
+    tx: lt ? lt.x : null, ty: lt ? lt.y : null, tz: lt ? lt.z : null,
+  });
 }
 
 function fireMissile(w) {
@@ -188,7 +194,12 @@ function fireMissile(w) {
     target: t, life: 7, from: 'player',
   });
   w.lockTarget = null; w.lockProgress = 0;
-  w.events.push({ type: 'missile', target: t.name });
+  // The missile's Doppler follows its target: main.js reads tx/ty/tz,
+  // finds that bandit, and passes its radial velocity + pan.
+  w.events.push({
+    type: 'missile', target: t.name,
+    x: p.x, y: p.y, z: p.z, tx: t.x, ty: t.y, tz: t.z,
+  });
 }
 
 function killEnemy(w, e, byMissile) {

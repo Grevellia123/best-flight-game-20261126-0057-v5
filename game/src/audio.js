@@ -25,6 +25,12 @@ export function createAudio() {
   let mslBuf = null, mslFailed = false;
   let gunPlays = 0, mslPlays = 0;
   let lastMslSrc = null; // most recent missile launch source (for pitch readout)
+  let lastGunSrc = null; // most recent gun burst source (for pitch readout)
+  let lastGunFactor = 1, lastGunPan = 0;
+  let lastMslFactor = 1, lastMslPan = 0;
+  // Retry timer for the lobby-BGM unlock (see unlock()): on Android the
+  // first touch is often a scroll drag, and Chrome swallows that resume.
+  let unlockRetryTimer = null;
   // Enemy close-pass flyby (jet-flyby.mp3, a full approach-pass-recede
   // whoosh). One voice at a time with a cooldown so overlapping passes
   // never stack into noise.
@@ -109,7 +115,13 @@ export function createAudio() {
     enemyOsc1.start(); enemyOsc2.start();
     // Report suspend / resume so the UI icon always matches real
     // audibility (a suspended context is silent even when unmuted).
-    ctx.onstatechange = () => { if (stateCb) stateCb(); };
+    // Also (re)start the BGM track the moment the context actually
+    // starts running — a track started while suspended must not be
+    // left waiting for another tap to be heard.
+    ctx.onstatechange = () => {
+      if (stateCb) stateCb();
+      if (ctx.state === 'running') startTrack();
+    };
     // White-noise buffer for hats / explosions / wind.
     noiseBuf = ctx.createBuffer(1, ctx.sampleRate, ctx.sampleRate);
     const d = noiseBuf.getChannelData(0);
@@ -316,6 +328,29 @@ export function createAudio() {
         const p = ctx.resume();
         p.catch(() => {});
         startTrack(); // in case the track decoded while the context was suspended
+        // Start the track again once the resume actually lands — the
+        // synchronous startTrack() above runs while still suspended.
+        p.then(() => { startTrack(); if (stateCb) stateCb(); }, () => {});
+        // Keep retrying briefly after a gesture: on Android the first
+        // touch is often a scroll drag to reach Settings, and Chrome
+        // swallows that resume — the BGM then stayed silent until the
+        // user happened to press SOUND ON. Retrying every 500 ms for
+        // 3 s after a gesture catches the moment the browser allows
+        // audio, so any first tap starts the lobby music, not only a
+        // tap on the SOUND ON button. Stops as soon as audio runs.
+        if (!unlockRetryTimer) {
+          unlockRetryTimer = setInterval(() => {
+            if (!ctx || ctx.state === 'running' || muted) {
+              clearInterval(unlockRetryTimer); unlockRetryTimer = null;
+              return;
+            }
+            ctx.resume().catch(() => {});
+            startTrack();
+          }, 500);
+          setTimeout(() => {
+            if (unlockRetryTimer) { clearInterval(unlockRetryTimer); unlockRetryTimer = null; }
+          }, 3000);
+        }
         return p.then(() => true, () => false);
       }
       startTrack(); // in case the track decoded while the context was suspended
@@ -364,8 +399,18 @@ export function createAudio() {
       }
       engineFilter.frequency.setTargetAtTime(240 + throttle * 900, t, 0.1);
     },
-    gun() {
+    // Own M4 gunfire with Doppler + stereo pan. radialVel is the target
+    // bandit's radial velocity (closing = pitch rises, receding = pitch
+    // falls — the same rule as the enemy gun); pan is the target's
+    // bearing (-1 left, +1 right). Even with no lock the burst still
+    // sweeps down as it travels downrange: the crack starts at the
+    // Doppler pitch and falls ~8% over the burst, so every burst sounds
+    // like it is flying away from you, not stuck to the cockpit.
+    gun(radialVel = 0, pan = 0) {
       if (!ctx) return;
+      const f = dopplerFromRadial(radialVel);
+      lastGunFactor = f;
+      lastGunPan = clampPan(pan);
       // The burst file is 2 s with 3 bursts inside, but the guns fire at
       // 16 shots/s — replaying it per shot would stack dozens of bursts.
       // Play at most one burst per 0.45 s; while it is sounding, extra
@@ -376,25 +421,29 @@ export function createAudio() {
           lastGunPlay = t;
           const src = ctx.createBufferSource();
           src.buffer = gunBuf;
-          // Own gunfire: no Doppler (the guns move with you), just a
-          // slight pitch wobble per burst so it doesn't sound mechanical.
-          src.playbackRate.value = 0.97 + Math.random() * 0.06;
+          const startRate = Math.max(0.97, Math.min(1.15, f));
+          const endRate = Math.max(0.85, Math.min(1.05, f * 0.92));
+          src.playbackRate.setValueAtTime(startRate, t);
+          src.playbackRate.setTargetAtTime(endRate, t, 0.18);
           // Kept deliberately quiet: the M4 recording peaks at 0 dB in
           // the source, and the file itself is already normalized to
           // -20 LUFS. A 0.7 gain (~-3 dB) keeps bursts clearly audible
           // without drowning the engine and the music.
           const g = ctx.createGain();
           g.gain.value = 0.7;
+          const p = makePan(lastGunPan);
+          if (p) { g.connect(p); p.connect(sfxGain); } else g.connect(sfxGain);
           src.connect(g);
-          g.connect(sfxGain);
           src.start(t);
+          lastGunSrc = src;
           gunPlays++;
         }
         return;
       }
       // Still loading or failed: synth fallback so shots are never silent.
-      noise(ctx.currentTime, 0.07, 0.22, 2400, 'highpass');
-      tone(190, ctx.currentTime, 0.05, 'square', 0.08, sfxGain);
+      // Its crack follows the same Doppler factor as the recording.
+      noise(ctx.currentTime, 0.07, 0.22, 2400 * f, 'highpass', lastGunPan);
+      tone(190 * f, ctx.currentTime, 0.05, 'square', 0.08, sfxGain);
     },
     // Enemy gunfire: the crack's pitch follows the shooter's Doppler —
     // higher while the bandit closes in, lower while it pulls away —
@@ -451,39 +500,53 @@ export function createAudio() {
       src.start(t); src.stop(t + 2.5);
       flybyPlays++;
     },
-    missile() {
+    // Missile launch with Doppler + stereo pan. radialVel is the target
+    // bandit's radial velocity (closing = higher launch pitch, receding
+    // = lower); pan is the target's bearing (-1 left, +1 right). The
+    // whoosh still falls as the missile flies away from you, but now
+    // from a Doppler start instead of a fixed 1.12x — a missile fired
+    // at a closing bandit sounds higher than one fired at a bandit
+    // running away.
+    missile(radialVel = 0, pan = 0) {
       if (!ctx) return;
+      const f = dopplerFromRadial(radialVel);
+      lastMslFactor = f;
+      lastMslPan = clampPan(pan);
       if (mslBuf) {
         const t = ctx.currentTime;
         const src = ctx.createBufferSource();
         src.buffer = mslBuf;
-        // The missile flies away from the player, so its whoosh falls
-        // in pitch as it travels — 1.12x at launch, easing to 0.85x.
-        src.playbackRate.setValueAtTime(1.12, t);
-        src.playbackRate.setTargetAtTime(0.85, t, 0.45);
-        // Kept quiet on purpose: the launch whoosh was the loudest
-        // launch sound in the game. A 0.5 gain (~-6 dB) keeps it
-        // audible without blasting over the engine and music.
+        // Start near the Doppler pitch, easing down to the receding
+        // pitch as the missile pulls away — 1.12x → 0.85x when the
+        // target is neither closing nor receding.
+        src.playbackRate.setValueAtTime(Math.max(1.0, Math.min(1.15, f * 1.05)), t);
+        src.playbackRate.setTargetAtTime(Math.max(0.85, Math.min(1.0, f * 0.85)), t, 0.45);
+        // Lowered again: 0.5 gain (~-6 dB) was still too loud. 0.35
+        // (~-9 dB, about -3 dB more) keeps the launch audible without
+        // blasting over the engine and music.
         const g = ctx.createGain();
-        g.gain.value = 0.5;
+        g.gain.value = 0.35;
+        const p = makePan(lastMslPan);
+        if (p) { g.connect(p); p.connect(sfxGain); } else g.connect(sfxGain);
         src.connect(g);
-        g.connect(sfxGain);
         src.start(t);
         lastMslSrc = src;
         mslPlays++;
         return;
       }
       // Still loading or failed: synth fallback — a falling filter sweep,
-      // the same receding pitch as the recording.
+      // the same receding pitch as the recording, lowered to match.
       const t = ctx.currentTime;
       const src = ctx.createBufferSource(); src.buffer = noiseBuf;
-      const f = ctx.createBiquadFilter(); f.type = 'bandpass';
-      f.frequency.setValueAtTime(2400, t);
-      f.frequency.exponentialRampToValueAtTime(500, t + 0.55);
+      const f2 = ctx.createBiquadFilter(); f2.type = 'bandpass';
+      f2.frequency.setValueAtTime(2400 * f, t);
+      f2.frequency.exponentialRampToValueAtTime(500, t + 0.55);
       const g = ctx.createGain();
-      g.gain.setValueAtTime(0.25, t);
+      g.gain.setValueAtTime(0.18, t);
       g.gain.exponentialRampToValueAtTime(0.001, t + 0.55);
-      src.connect(f); f.connect(g); g.connect(sfxGain);
+      const p = makePan(lastMslPan);
+      src.connect(f2); f2.connect(g);
+      if (p) { g.connect(p); p.connect(sfxGain); } else g.connect(sfxGain);
       src.start(t); src.stop(t + 0.6);
     },
     explosion(big) {
@@ -544,6 +607,11 @@ export function createAudio() {
     get enemyEngineRate() { return enemySrc ? enemySrc.playbackRate.value : null; },
     get enemyEngineLevel() { return enemyGain ? enemyGain.gain.value : null; },
     get missileRate() { return lastMslSrc ? lastMslSrc.playbackRate.value : null; },
+    get missileFactor() { return lastMslFactor; },
+    get missilePan() { return lastMslPan; },
+    get gunRate() { return lastGunSrc ? lastGunSrc.playbackRate.value : null; },
+    get gunFactor() { return lastGunFactor; },
+    get gunPan() { return lastGunPan; },
     get lastEnemyGunFreq() { return lastEnemyGunFreq; },
     get lastEnemyGunFactor() { return lastEnemyGunFactor; },
     get flybyState() {

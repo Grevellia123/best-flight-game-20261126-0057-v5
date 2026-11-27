@@ -95,6 +95,14 @@ const unlockAudio = (e) => {
 window.addEventListener('pointerdown', unlockAudio);
 window.addEventListener('click', unlockAudio);
 window.addEventListener('keydown', unlockAudio);
+// Touch needs its own listeners: on Android a touch that becomes a
+// scroll drag fires pointerdown but Chrome does not count it as the
+// gesture that resumes audio — touchstart / touchend / pointerup give
+// the same tap extra chances to unlock, so the lobby music no longer
+// waits for a tap on the SOUND ON button specifically.
+window.addEventListener('touchstart', unlockAudio, { passive: true });
+window.addEventListener('touchend', unlockAudio, { passive: true });
+window.addEventListener('pointerup', unlockAudio);
 
 let scene;
 try {
@@ -181,7 +189,20 @@ function toggleCam() {
 }
 
 function toggleMute() {
-  if (firstMuteGesture) {
+  // If the setting already says SOUND ON but nothing is audible yet
+  // (the AudioContext is still suspended, waiting for the browser to
+  // allow sound), this tap means "turn sound on" — unlock and stay ON.
+  // The old code toggled here, so pressing the SOUND ON button when
+  // the lobby was silent actually muted the game, and the music only
+  // started on the *next* press. That was the "BGM won't play unless
+  // you press sound on" bug: the button said ON while silent, and the
+  // press that should have started the music turned it off instead.
+  if (!settings.muted && !audio.audible) {
+    firstMuteGesture = false;
+    settings.muted = false;
+    audio.unlock();
+    audio.setMuted(false);
+  } else if (firstMuteGesture) {
     // The user's very first gesture was on a mute control — this tap
     // means "turn sound on". Consumed once; every later tap toggles.
     firstMuteGesture = false;
@@ -191,6 +212,9 @@ function toggleMute() {
   } else {
     settings.muted = !settings.muted;
     audio.setMuted(settings.muted);
+    // Unmuting is itself a gesture: resume immediately so the music
+    // starts on this tap, not on the next one.
+    if (!settings.muted) audio.unlock();
   }
   saveSettings();
   updateMuteUI();
@@ -333,12 +357,16 @@ sfxVolEl.value = Math.round(settings.sfxVol * 100);
 $('music-vol-val').textContent = `${musicVolEl.value}%`;
 $('sfx-vol-val').textContent = `${sfxVolEl.value}%`;
 musicVolEl.addEventListener('input', () => {
+  // Dragging a volume slider is a gesture too — unlock here so the
+  // music can start from the slider, not only from SOUND ON.
+  audio.unlock();
   settings.musicVol = musicVolEl.value / 100;
   audio.setMusicVolume(settings.musicVol);
   $('music-vol-val').textContent = `${musicVolEl.value}%`;
   saveSettings();
 });
 sfxVolEl.addEventListener('input', () => {
+  audio.unlock();
   settings.sfxVol = sfxVolEl.value / 100;
   audio.setSfxVolume(settings.sfxVol);
   $('sfx-vol-val').textContent = `${sfxVolEl.value}%`;
@@ -415,7 +443,17 @@ function fpsTick(realDt) {
 function drainEvents() {
   for (const ev of world.events) {
     switch (ev.type) {
-      case 'gun': audio.gun(); break;
+      case 'gun': {
+        // The M4's Doppler follows the bandit being shot at (its radial
+        // velocity + bearing); with no lock it still sweeps downrange.
+        const target = (ev.tx !== null && ev.tx !== undefined)
+          ? enemyNear(ev.tx, ev.ty, ev.tz) : null;
+        audio.gun(
+          target ? radialVelOf(target) : 0,
+          target ? panOf(target.x, target.y, target.z) : 0,
+        );
+        break;
+      }
       case 'enemyGun': {
         // The shooter's pitch follows its own Doppler, not the nearest
         // bandit's — match the bandit at the event position. Its crack
@@ -427,7 +465,17 @@ function drainEvents() {
         );
         break;
       }
-      case 'missile': audio.missile(); break;
+      case 'missile': {
+        // The missile's Doppler follows its target bandit (radial
+        // velocity + bearing), then falls as it flies away from you.
+        const target = (ev.tx !== null && ev.tx !== undefined)
+          ? enemyNear(ev.tx, ev.ty, ev.tz) : null;
+        audio.missile(
+          target ? radialVelOf(target) : 0,
+          target ? panOf(target.x, target.y, target.z) : 0,
+        );
+        break;
+      }
       case 'missileHit': case 'hit': audio.hit(); hitFlash = 0.35; break;
       case 'kill':
         audio.kill();
