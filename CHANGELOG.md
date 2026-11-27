@@ -1,5 +1,23 @@
 # TALON STRIKE — Changelog
 
+## v5.7 — 27 November 2026
+
+### Settings on the pause screen, wave banner tucked under the wave pill
+- The pause screen (HOLDING PATTERN) now has the settings menu: the
+  same sound, camera and resolution panel from the title screen moves
+  into the pause screen while paused, so MUSIC / SFX, SOUND ON and
+  LOW / MEDIUM / HIGH can be changed mid-sortie without quitting to
+  the title. There is only one panel and one set of controls — it
+  moves back to the title screen when you resume, restart or quit —
+  and a SETTINGS button on the pause screen hides it again if you
+  want the clean pause screen back. RESUME stays above it.
+- "FIRST CONTACT — 3 HOSTILES" now sits directly under the WAVE 1 / 5
+  pill, on the same left edge and a few pixels below it, in every
+  layout. On phone landscape it used to sit 72 px to the right and
+  20 px below the pill, reading as a separate floating banner; on
+  narrow screens it keeps the same left edge too. The timed centre
+  banner ("WAVE 1 — FIRST CONTACT · 3 HOSTILES") is unchanged.
+
 ## v5.6 — 27 November 2026
 
 ### Off-screen objects are no longer rendered

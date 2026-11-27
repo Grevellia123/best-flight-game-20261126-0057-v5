@@ -133,11 +133,26 @@ let shotInfo = null;
 
 // ---- screens -----------------------------------------------------------------
 const screens = { title: $('title-screen'), over: $('over-screen'), win: $('win-screen'), pause: $('pause-screen') };
+// The one settings panel lives on the title screen, but while paused it
+// moves into the pause screen so the same sound / camera / resolution
+// controls are reachable mid-sortie — no duplicate controls, no second
+// set of IDs, and the sliders keep working because they are looked up by
+// ID wherever the panel sits. It opens visible on pause (RESUME stays
+// above it) and moves back, reset to visible, on any other screen.
+const settingsPanel = $('settings-panel');
 function showScreen(name) {
   for (const [k, el] of Object.entries(screens)) el.style.display = k === name ? 'flex' : 'none';
   $('hud').style.display = name === null ? 'block' : 'none';
   $('touch-controls').style.display = (name === null && isTouch) ? 'block' : 'none';
   document.body.classList.toggle('on-title', name === 'title');
+  if (name === 'pause') {
+    screens.pause.appendChild(settingsPanel);
+    settingsPanel.style.display = '';
+    $('btn-pause-settings').textContent = '✕ SETTINGS';
+  } else if (settingsPanel.parentElement !== screens.title) {
+    screens.title.appendChild(settingsPanel);
+    settingsPanel.style.display = '';
+  }
 }
 
 function fillDebrief(prefix) {
@@ -321,6 +336,12 @@ $('btn-again-win').addEventListener('click', startGame);
 $('btn-title-over').addEventListener('click', toTitle);
 $('btn-title-win').addEventListener('click', toTitle);
 $('btn-resume').addEventListener('click', togglePause);
+$('btn-pause-settings').addEventListener('click', () => {
+  const open = settingsPanel.style.display === 'none';
+  settingsPanel.style.display = open ? '' : 'none';
+  $('btn-pause-settings').textContent = open ? '✕ SETTINGS' : '⚙ SETTINGS';
+  audio.click();
+});
 $('btn-restart').addEventListener('click', () => { world.paused = false; startGame(); });
 $('btn-quit-title').addEventListener('click', () => { world.paused = false; toTitle(); });
 $('btn-mute').addEventListener('click', toggleMute);

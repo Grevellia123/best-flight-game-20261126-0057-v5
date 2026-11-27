@@ -40,8 +40,12 @@
   }
   #compass { flex: 1 1 120px; min-width: 120px; max-width: 320px; height: 56px; }
   #wave-info .gold { color: var(--gold); }
+  /* Wave sub ("FIRST CONTACT — 3 HOSTILES"): tucked directly under the
+     wave-info pill, same left edge, a few px below it — never centred,
+     never floating with a gap. The topbar is 8px + the wave pill (~35px),
+     so 48px sits ~5px under it. */
   #wave-sub {
-    position: absolute; top: calc(52px + env(safe-area-inset-top, 0px)); left: calc(12px + env(safe-area-inset-left, 0px));
+    position: absolute; top: calc(48px + env(safe-area-inset-top, 0px)); left: calc(12px + env(safe-area-inset-left, 0px));
     padding: 5px 10px; font-size: 11px; letter-spacing: 0.05em; color: var(--hud-dim);
   }
   #killfeed {
@@ -239,7 +243,10 @@
     #wave-info { font-size: 12px; padding: 6px 10px; }
     #compass { height: 44px; }
     .hud-btn { min-height: 40px; padding: 6px 10px; }
-    #wave-sub { left: calc(84px + env(safe-area-inset-left, 0px)); top: calc(56px + env(safe-area-inset-top, 0px)); }
+    /* Phone landscape: the wave pill is ~28px tall, so the sub sits
+       4px under it, on the same left edge — it used to sit 72px right
+       and 20px below the pill, reading as a separate floating banner. */
+    #wave-sub { left: calc(12px + env(safe-area-inset-left, 0px)); top: calc(40px + env(safe-area-inset-top, 0px)); }
     #killfeed { left: calc(84px + env(safe-area-inset-left, 0px)); top: calc(84px + env(safe-area-inset-top, 0px)); max-height: 40px; overflow: hidden; }
     /* Wave banner: narrow pill in the top zone, clear of the centre reticle
        and of enemies flying through the middle — it used to span 92vw and
@@ -299,7 +306,10 @@
     .hide-narrow { display: none; }
     #btn-cam { font-size: 10px; padding: 6px 8px; }
     #compass { flex: 1 1 100%; width: auto; max-width: none; order: 3; height: 48px; }
-    #wave-sub { top: calc(152px + env(safe-area-inset-top, 0px)); }
+    /* Narrow: the top strip wraps to three rows (~140px), so the sub
+       sits just under it — and on the same left edge as the wave pill,
+       not the 84px indent the compact rule would otherwise leave. */
+    #wave-sub { left: calc(12px + env(safe-area-inset-left, 0px)); top: calc(148px + env(safe-area-inset-top, 0px)); }
     #msg { top: calc(184px + env(safe-area-inset-top, 0px)); }
     #killfeed { top: calc(220px + env(safe-area-inset-top, 0px)); }
   }
@@ -363,7 +373,7 @@
     <b>MISSILE</b> F — hold the bandit in the reticle to lock &nbsp;·&nbsp; <b>CAMERA</b> C &nbsp;·&nbsp; <b>PAUSE</b> P<br>
     Fly through gold rings for +50 CR · Watch fuel and hull · Clear all 5 waves to win
   </div>
-  <div class="settings-panel">
+  <div class="settings-panel" id="settings-panel">
     <div class="settings-title">SETTINGS</div>
     <div class="settings-section">
       <div class="settings-label">SOUND</div>
@@ -424,7 +434,12 @@
     <button class="big-btn" id="btn-resume">▶ &nbsp;RESUME</button>
     <button class="ghost-btn" id="btn-restart">RESTART</button>
     <button class="ghost-btn" id="btn-quit-title">TITLE</button>
+    <button class="ghost-btn" id="btn-pause-settings">✕ SETTINGS</button>
   </div>
+  <!-- The one settings panel moves in here while paused (see showScreen
+       in main.js) — same sound / camera / resolution controls as the
+       title screen, no duplicate controls. It sits below the buttons so
+       RESUME stays at the top; the screen scrolls on short phones. -->
 </div>
 
 <div id="webgl-error"></div>
