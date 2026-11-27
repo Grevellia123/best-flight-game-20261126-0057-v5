@@ -55,7 +55,7 @@ const els = {
   hullBar: $('hull-bar'), hullText: $('hull-text'),
   heatBar: $('heat-bar'), heatText: $('heat-text'),
   mslText: $('msl-text'), stallWarn: $('stall-warn'), lockText: $('lock-text'),
-  btnFire: $('btn-fire'), btnMsl: $('btn-msl'), btnThrUp: $('btn-thr-up'), btnThrDn: $('btn-thr-dn'),
+  btnFire: $('btn-fire'), btnMsl: $('btn-msl'),
   btnCam: $('btn-cam'), btnPause: $('btn-pause'), btnMute: $('btn-mute'),
 };
 const input = createInput(container, els);
@@ -130,6 +130,25 @@ function toggleMute() {
   $('mute-setting').textContent = settings.muted ? 'MUTED' : 'SOUND ON';
 }
 
+// Fullscreen: true fullscreen needs a user tap on mobile Chrome (the
+// address bar cannot be hidden from code alone), so the ⛶ button in the
+// top bar is the way in and out. Prefixed fallbacks for older Safari.
+function toggleFullscreen() {
+  try {
+    if (document.fullscreenElement || document.webkitFullscreenElement) {
+      const p = document.exitFullscreen ? document.exitFullscreen() : document.webkitExitFullscreen();
+      if (p && p.catch) p.catch(() => {});
+    } else {
+      const el = document.documentElement;
+      const p = el.requestFullscreen ? el.requestFullscreen() : el.webkitRequestFullscreen();
+      if (p && p.catch) p.catch(() => {});
+    }
+  } catch (e) { /* fullscreen unavailable here — ignore */ }
+}
+document.addEventListener('fullscreenchange', () => {
+  $('btn-full').textContent = document.fullscreenElement ? '✕' : '⛶';
+});
+
 // Buttons.
 $('btn-fly').addEventListener('click', startGame);
 $('btn-again').addEventListener('click', startGame);
@@ -140,6 +159,7 @@ $('btn-resume').addEventListener('click', togglePause);
 $('btn-restart').addEventListener('click', () => { world.paused = false; startGame(); });
 $('btn-quit-title').addEventListener('click', () => { world.paused = false; toTitle(); });
 $('btn-mute').addEventListener('click', () => { audio.unlock(); toggleMute(); });
+$('btn-full').addEventListener('click', toggleFullscreen);
 $('quality-setting').addEventListener('click', () => {
   const order = ['low', 'medium', 'high'];
   const next = order[(order.indexOf(settings.quality) + 1) % 3];

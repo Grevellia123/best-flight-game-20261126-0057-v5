@@ -83,20 +83,17 @@ export function createInput(playSurface, els) {
     el.addEventListener('pointerleave', end);
   }
   holdButton(els.btnFire, () => { state.gun = true; }, () => { state.gun = false; });
-  holdButton(els.btnThrUp, () => { state.thrUp = true; }, () => { state.thrUp = false; });
-  holdButton(els.btnThrDn, () => { state.thrDn = true; }, () => { state.thrDn = false; });
   if (els.btnMsl) els.btnMsl.addEventListener('pointerdown', (e) => { e.preventDefault(); state.missile = true; });
   if (els.btnCam) els.btnCam.addEventListener('pointerdown', (e) => { e.preventDefault(); state.camToggle = true; });
   if (els.btnPause) els.btnPause.addEventListener('pointerdown', (e) => { e.preventDefault(); state.pauseToggle = true; });
   if (els.btnMute) els.btnMute.addEventListener('pointerdown', (e) => { e.preventDefault(); state.muteToggle = true; });
 
-  // Per-frame: throttle on Shift/Ctrl (or R/V), wheel, and touch buttons.
+  // Per-frame: throttle on Shift/Ctrl (or R/V) and wheel. Touch has no
+  // throttle control — throttle stays at its cruise default (0.62).
   // (W/S steer pitch; Space fires; F launches a missile.)
   state.tick = (dt) => {
     if (keys.has('ShiftLeft') || keys.has('ShiftRight') || keys.has('KeyR')) state.throttle = Math.min(1, state.throttle + 0.55 * dt);
     if (keys.has('ControlLeft') || keys.has('ControlRight') || keys.has('KeyV')) state.throttle = Math.max(0, state.throttle - 0.55 * dt);
-    if (state.thrUp) state.throttle = Math.min(1, state.throttle + 0.6 * dt);
-    if (state.thrDn) state.throttle = Math.max(0, state.throttle - 0.6 * dt);
     return state;
   };
 

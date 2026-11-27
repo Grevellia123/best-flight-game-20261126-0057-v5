@@ -130,8 +130,6 @@
   .touch-btn:active { background: rgba(140, 220, 255, 0.35); }
   #btn-fire { right: calc(18px + env(safe-area-inset-right, 0px)); bottom: calc(180px + env(safe-area-inset-bottom, 0px)); width: 84px; height: 84px; border-color: var(--red); color: #ffb0a0; }
   #btn-msl { right: calc(116px + env(safe-area-inset-right, 0px)); bottom: calc(196px + env(safe-area-inset-bottom, 0px)); width: 64px; height: 64px; border-color: var(--gold); color: #ffe1a0; }
-  #btn-thr-up { left: calc(18px + env(safe-area-inset-left, 0px)); bottom: calc(196px + env(safe-area-inset-bottom, 0px)); }
-  #btn-thr-dn { left: calc(18px + env(safe-area-inset-left, 0px)); bottom: calc(124px + env(safe-area-inset-bottom, 0px)); }
   .touch-hint {
     position: absolute; left: 50%; bottom: calc(8px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%);
     font-size: 10px; letter-spacing: 0.08em; color: var(--hud-dim); white-space: nowrap;
@@ -197,11 +195,12 @@
   }
   /* ---------- Compact layout: touch devices with a short screen ----------
      Phone landscape (and small touch landscape): the old layout stacked the
-     centred tapes, the bottom bars, the radar and the round THR/FIRE/MSL
+     centred tapes, the bottom bars, the radar and the round FIRE/MSL
      buttons in the same corners, so they all overlapped. Here every HUD
      piece gets its own zone: top strip | docked tapes left/right |
-     THR buttons below the IAS tape | bars bottom-centre | FIRE/MSL
-     mid-right, left of the ALT tape | radar bottom-right. */
+     bars bottom-left (the THR buttons were deleted, so the freed corner
+     is the bars panel's home) | FIRE/MSL mid-right, left of the ALT
+     tape | radar bottom-right. */
   /* Short screens also match without pointer: coarse, so the compact
      layout still applies if a phone ever reports a fine pointer.
      Desktop 1280x720 is unaffected (720px tall matches neither branch). */
@@ -217,18 +216,24 @@
     #msg { top: calc(128px + env(safe-area-inset-top, 0px)); font-size: 11px; padding: 5px 12px; max-width: 60vw; background: rgba(8, 18, 26, 0.55); }
     /* dvh, not vh: on Chrome Android 100vh is the large viewport (URL bar
        hidden) while the bottom-anchored buttons use the visible viewport,
-       so a vh-sized tape grew ~40px too tall and ran over the THR buttons
+       so a vh-sized tape grew ~40px too tall and ran over the bars panel
        and the radar whenever the URL bar was showing. */
     #ias-tape, #alt-tape { top: calc(92px + env(safe-area-inset-top, 0px)); transform: none; height: calc(100vh - 210px); height: calc(100dvh - 210px); min-height: 96px; }
-    #bars { left: 50%; transform: translateX(-50%); bottom: calc(12px + env(safe-area-inset-bottom, 0px)); width: 200px; padding: 8px 10px; font-size: 10px; }
+    /* Bars live bottom-left in every layout now that the THR buttons are
+       gone — the freed corner is theirs, clear of the docked IAS tape
+       above (tape bottom sits ~14px above the panel top at 360-412px). */
+    #bars { left: calc(12px + env(safe-area-inset-left, 0px)); transform: none; bottom: calc(12px + env(safe-area-inset-bottom, 0px)); width: 200px; padding: 8px 10px; font-size: 10px; }
     #bars .bar-row label { width: 72px; }
     #bars .bar-row .val { width: 60px; }
     #bars .bar { height: 7px; }
     #radar { width: 96px; height: 96px; }
-    #btn-thr-up { left: calc(18px + env(safe-area-inset-left, 0px)); bottom: calc(60px + env(safe-area-inset-bottom, 0px)); width: 48px; height: 48px; min-width: 48px; min-height: 48px; }
-    #btn-thr-dn { left: calc(18px + env(safe-area-inset-left, 0px)); bottom: calc(6px + env(safe-area-inset-bottom, 0px)); width: 48px; height: 48px; min-width: 48px; min-height: 48px; }
     #btn-fire { right: calc(96px + env(safe-area-inset-right, 0px)); bottom: calc(118px + env(safe-area-inset-bottom, 0px)); width: 72px; height: 72px; }
     #btn-msl { right: calc(176px + env(safe-area-inset-right, 0px)); bottom: calc(126px + env(safe-area-inset-bottom, 0px)); width: 56px; height: 56px; min-width: 56px; min-height: 56px; }
+    /* Lock text: the longest form ("LOCKING VULTURE-1 100%") is ~206px
+       wide at 13px and its right edge reached the MSL button at 640px
+       wide (pre-existing, surfaced by this round's check). 11px keeps
+       even the longest form left of the MSL button. */
+    #lock-text { font-size: 11px; letter-spacing: 0.06em; }
     .touch-hint { display: none; }
   }
 
@@ -253,16 +258,19 @@
   }
 
   /* Very narrow portrait: the top strip wraps so the compass drops to its
-     own row instead of running over the wave panel and the buttons. */
+     own row instead of running over the wave panel and the buttons.
+     Four top buttons (COCKPIT/mute/pause/fullscreen) no longer fit next
+     to the wave panel, so they wrap to a second row and the top strip is
+     three rows tall (~143px) — wave-sub / msg / killfeed sit below it. */
   @media (max-width: 480px) {
     #topbar { flex-wrap: wrap; }
     #wave-info { font-size: 11px; padding: 6px 8px; }
     .hide-narrow { display: none; }
     #btn-cam { font-size: 10px; padding: 6px 8px; }
     #compass { flex: 1 1 100%; width: auto; max-width: none; order: 3; height: 48px; }
-    #wave-sub { top: calc(112px + env(safe-area-inset-top, 0px)); }
-    #msg { top: calc(140px + env(safe-area-inset-top, 0px)); }
-    #killfeed { top: calc(178px + env(safe-area-inset-top, 0px)); }
+    #wave-sub { top: calc(152px + env(safe-area-inset-top, 0px)); }
+    #msg { top: calc(184px + env(safe-area-inset-top, 0px)); }
+    #killfeed { top: calc(220px + env(safe-area-inset-top, 0px)); }
   }
 </style>
 <script type="importmap">
@@ -282,6 +290,7 @@
       <button class="hud-btn" id="btn-cam">COCKPIT</button>
       <button class="hud-btn" id="btn-mute">🔊</button>
       <button class="hud-btn" id="btn-pause">⏸</button>
+      <button class="hud-btn" id="btn-full">⛶</button>
     </div>
   </div>
   <div id="wave-sub" class="panel"></div>
@@ -301,8 +310,6 @@
 </div>
 
 <div id="touch-controls">
-  <div class="touch-btn" id="btn-thr-up">THR ▲</div>
-  <div class="touch-btn" id="btn-thr-dn">THR ▼</div>
   <div class="touch-btn" id="btn-msl">MSL</div>
   <div class="touch-btn" id="btn-fire">FIRE</div>
   <div class="touch-hint">DRAG TO STEER · FIRE = GUNS · MSL = MISSILE (NEEDS LOCK)</div>
