@@ -25,11 +25,23 @@ const store = {
 };
 const saved = store.get();
 const isTouch = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+// Low-end phones (POCO M3 class: <= 4 GB RAM, very high DPR, or <= 4
+// cores) cannot hold a smooth frame rate on Medium-with-post, and the
+// step-down takes seconds to react — so they start on Low. The user can
+// still raise quality manually; the auto step-down then protects them.
+const lowEnd = isTouch && (
+  (navigator.deviceMemory > 0 && navigator.deviceMemory <= 4) ||
+  (window.devicePixelRatio || 1) >= 2.5 ||
+  (navigator.hardwareConcurrency > 0 && navigator.hardwareConcurrency <= 4)
+);
 const settings = {
-  quality: saved.quality || (isTouch ? 'medium' : 'high'),
+  quality: saved.quality || (lowEnd ? 'low' : (isTouch ? 'medium' : 'high')),
   camMode: saved.camMode || 'chase',
   muted: saved.muted === true,
 };
+// A saved High from an earlier session is capped to Medium on low-end
+// hardware — starting on High there is exactly the jerk the user reported.
+if (lowEnd && settings.quality === 'high') settings.quality = 'medium';
 function saveSettings() { store.set(settings); }
 
 // ---- world + scene -----------------------------------------------------------
@@ -37,6 +49,16 @@ const world = createWorld();
 const container = $('game');
 const audio = createAudio();
 if (settings.muted) audio.setMuted(true);
+// Prime audio on load: the (suspended) AudioContext is created and the
+// MP3/SFX downloads start immediately, so the track is usually decoded
+// by the time the user taps. No sound plays until a gesture resumes it.
+audio.prime();
+// First tap / keypress anywhere unlocks audio — including taps on the
+// lobby, so the background music starts on the title screen instead of
+// only when the sortie begins. unlock() is idempotent.
+const unlockAudio = () => audio.unlock();
+window.addEventListener('pointerdown', unlockAudio, { once: true });
+window.addEventListener('keydown', unlockAudio, { once: true });
 
 let scene;
 try {
@@ -207,12 +229,16 @@ const QUALITY_ORDER = ['low', 'medium', 'high'];
 function fpsTick(realDt) {
   if (realDt <= 0) return;
   fpsAcc += 1 / realDt; fpsN++;
-  if (fpsN >= 30) {
+  if (fpsN >= 20) {
     fpsAvg = fpsAcc / fpsN;
     fpsAcc = 0; fpsN = 0;
-    if (fpsAvg < 28 && world.screen === 'play') {
+    // Step down on the title screen too: the same 3D scene renders there,
+    // so a jerky title means the device is already over budget before play.
+    // Two consecutive low batches (40 frames) react in ~2-3 s instead of
+    // the old 90 frames, so the user stops seeing the jerk quickly.
+    if (fpsAvg < 28 && (world.screen === 'play' || world.screen === 'title')) {
       lowTime += 1;
-      if (lowTime >= 3) {
+      if (lowTime >= 2) {
         if (scene.postLevel > 0) {
           // Shed the expensive post effects (bloom / god rays) first —
           // the frame rate usually recovers without dropping resolution.

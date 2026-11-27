@@ -37,7 +37,11 @@ export function createAudio() {
     }
     master = ctx.createGain(); master.gain.value = muted ? 0 : 0.85;
     master.connect(ctx.destination);
-    musicGain = ctx.createGain(); musicGain.gain.value = 0.34; musicGain.connect(master);
+    musicGain = ctx.createGain();
+    // Title / game-over start quieter than gameplay; applyMusicLevel also
+    // enforces this whenever the mood changes or the track starts.
+    musicGain.gain.value = (mood === 'title' || mood === 'over') ? 0.22 : 0.34;
+    musicGain.connect(master);
     sfxGain = ctx.createGain(); sfxGain.gain.value = 0.9; sfxGain.connect(master);
     engineGain = ctx.createGain(); engineGain.gain.value = 0; engineGain.connect(master);
     engineFilter = ctx.createBiquadFilter(); engineFilter.type = 'lowpass'; engineFilter.frequency.value = 320;
@@ -194,6 +198,11 @@ export function createAudio() {
   }
 
   const api = {
+    // Prime on page load: create the (suspended) context and start the
+    // MP3/SFX downloads immediately, so the track is usually decoded by
+    // the time the user taps. No sound plays until a gesture resumes the
+    // context — this is preloading, not autoplay.
+    prime() { ensure(); },
     unlock() {
       if (!ensure()) return;
       if (ctx.state === 'suspended') void ctx.resume();
@@ -316,6 +325,9 @@ export function createAudio() {
       return (ctx.currentTime - trackStartCtx) % trackBuf.duration;
     },
     get trackDuration() { return trackBuf ? trackBuf.duration : 0; },
+    // True while the synthesized sequencer interval is running — i.e.
+    // the fallback BGM is live (MP3 still loading, or failed to load).
+    get seqActive() { return !!seqTimer; },
     get masterLevel() { return master ? master.gain.value : null; },
     // Real-SFX state for debugging / automated checks.
     get engineState() {

@@ -10,10 +10,16 @@ const MAX_TRACERS = 96;
 const MAX_MISSILES = 6;
 const TRAIL_POINTS = 14;
 
-// Scratch vectors for the per-frame sun projection (no allocation in sync).
+// Scratch vectors for the per-frame sun projection and camera targets
+// (no allocation in sync / project — per-frame Vector3 churn is a GC
+// hitch source on low-end phones).
 const _toSun = new THREE.Vector3();
 const _fwd = new THREE.Vector3();
 const _ndc = new THREE.Vector3();
+const _desiredPos = new THREE.Vector3();
+const _desiredLook = new THREE.Vector3();
+const _right = new THREE.Vector3();
+const _proj = new THREE.Vector3();
 const sstep = (a, b, x) => {
   const t = Math.min(1, Math.max(0, (x - a) / (b - a)));
   return t * t * (3 - 2 * t);
@@ -149,7 +155,11 @@ function buildTerrain(seed) {
 }
 
 export function createScene(container, qualityName) {
-  const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+  // MSAA (antialias) is a big fill-rate cost on tiled mobile GPUs and the
+  // bloom pass softens edges anyway — only High renders with it. It is
+  // fixed at context creation, so a later switch to High keeps the
+  // current antialias setting; the step-down never needs it.
+  const renderer = new THREE.WebGLRenderer({ antialias: qualityName === 'high', powerPreference: 'high-performance' });
   renderer.setSize(container.clientWidth, container.clientHeight);
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, CFG.quality[qualityName].pixelRatio));
   renderer.outputColorSpace = THREE.SRGBColorSpace;
@@ -359,7 +369,7 @@ export function createScene(container, qualityName) {
 
   // Project a world point to CSS pixels in the container (for the HUD overlay).
   handle.project = (x, y, z) => {
-    const v = new THREE.Vector3(x, y, z);
+    const v = _proj.set(x, y, z);
     const dist = v.distanceTo(camera.position);
     v.project(camera);
     if (v.z > 1 || v.x < -1.1 || v.x > 1.1 || v.y < -1.1 || v.y > 1.1) return null;
@@ -506,8 +516,8 @@ export function createScene(container, qualityName) {
       y: Math.sin(p.pitch),
       z: -Math.cos(p.yaw) * Math.cos(p.pitch),
     };
-    const desiredPos = new THREE.Vector3();
-    const desiredLook = new THREE.Vector3();
+    const desiredPos = _desiredPos;
+    const desiredLook = _desiredLook;
     if (camMode === 'cockpit') {
       desiredPos.set(p.x + nose.x * 2.5, p.y + 1.4, p.z + nose.z * 2.5);
       desiredLook.set(p.x + nose.x * 200, p.y + nose.y * 200, p.z + nose.z * 200);
@@ -518,8 +528,8 @@ export function createScene(container, qualityName) {
       // sits in the right third of the frame, clear of the centred title text.
       const a = time * 0.12;
       desiredPos.set(p.x + Math.sin(a) * 34, p.y + 8 + Math.sin(time * 0.3) * 3, p.z + Math.cos(a) * 34);
-      const right = new THREE.Vector3(Math.cos(a), 0, -Math.sin(a));
-      desiredLook.set(p.x - right.x * 20, p.y + 4, p.z - right.z * 20);
+      _right.set(Math.cos(a), 0, -Math.sin(a));
+      desiredLook.set(p.x - _right.x * 20, p.y + 4, p.z - _right.z * 20);
       if (snap) { handle.camPos.copy(desiredPos); handle.camLook.copy(desiredLook); }
       else {
         handle.camPos.lerp(desiredPos, 1 - Math.pow(0.001, dt));

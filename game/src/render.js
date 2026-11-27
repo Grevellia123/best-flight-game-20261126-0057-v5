@@ -4,6 +4,17 @@
 import { CFG } from './config.js';
 import { clamp } from './random.js';
 
+// Per-frame DOM churn is a real jank source on low-end phones: assigning
+// innerHTML / textContent / style every frame forces style recalculation
+// even when the string is unchanged. Only write when the value changed.
+function setText(el, s) { if (el._txt !== s) { el._txt = s; el.textContent = s; } }
+function setHtml(el, s) { if (el._html !== s) { el._html = s; el.innerHTML = s; } }
+function setBar(el, pct) {
+  const w = `${clamp(pct, 0, 100)}%`;
+  if (el._w !== w) { el._w = w; el.style.width = w; }
+}
+function setOp(el, v) { if (el._op !== v) { el._op = v; el.style.opacity = v; } }
+
 function setupCanvas(el, maxDpr = 1.5) {
   const dpr = Math.min(window.devicePixelRatio || 1, maxDpr);
   const w = el.clientWidth, h = el.clientHeight;
@@ -167,30 +178,30 @@ export function drawHud(els, world, opts) {
   drawRadar(els.radar, world);
 
   // Top-left info.
-  els.waveInfo.innerHTML =
-    `WAVE ${Math.max(1, world.wave)} / ${CFG.waves.length} &nbsp;·&nbsp; <span class="hide-narrow">KILLS ${world.kills} &nbsp;·&nbsp; </span><span class="gold">${world.score} CR</span>`;
-  els.waveSub.textContent = world.waveState === 'active' && world.wave > 0
+  setHtml(els.waveInfo,
+    `WAVE ${Math.max(1, world.wave)} / ${CFG.waves.length} &nbsp;·&nbsp; <span class="hide-narrow">KILLS ${world.kills} &nbsp;·&nbsp; </span><span class="gold">${world.score} CR</span>`);
+  setText(els.waveSub, world.waveState === 'active' && world.wave > 0
     ? `${CFG.waves[world.wave - 1].name} — ${world.enemies.length} HOSTILES`
-    : world.msg || '';
-  els.msg.textContent = world.msg || '';
-  els.msg.style.opacity = world.msgTimer > 0 ? '1' : '0';
+    : world.msg || '');
+  setText(els.msg, world.msg || '');
+  setOp(els.msg, world.msgTimer > 0 ? '1' : '0');
 
   // Bottom-left bars.
-  els.fuelBar.style.width = `${clamp(p.fuel, 0, 100)}%`;
+  setBar(els.fuelBar, p.fuel);
   els.fuelBar.classList.toggle('low', p.fuel < 25);
-  els.fuelText.textContent = `FUEL ${Math.round(p.fuel)}%`;
-  els.hullBar.style.width = `${clamp(p.hull, 0, 100)}%`;
+  setText(els.fuelText, `FUEL ${Math.round(p.fuel)}%`);
+  setBar(els.hullBar, p.hull);
   els.hullBar.classList.toggle('low', p.hull < 30);
-  els.hullText.textContent = `HULL ${Math.round(p.hull)}%`;
-  els.heatBar.style.width = `${clamp(p.heat, 0, 100)}%`;
+  setText(els.hullText, `HULL ${Math.round(p.hull)}%`);
+  setBar(els.heatBar, p.heat);
   els.heatBar.classList.toggle('hot', p.overheated);
-  els.heatText.textContent = p.overheated ? 'GUNS OVERHEATED' : `GUN HEAT ${Math.round(p.heat)}%`;
-  els.mslText.textContent = `MSL ${p.missiles} ×`;
+  setText(els.heatText, p.overheated ? 'GUNS OVERHEATED' : `GUN HEAT ${Math.round(p.heat)}%`);
+  setText(els.mslText, `MSL ${p.missiles} ×`);
   els.mslText.classList.toggle('empty', p.missiles === 0);
-  els.stallWarn.style.opacity = p.stall ? '1' : '0';
-  els.lockText.textContent = world.lockTarget
+  setOp(els.stallWarn, p.stall ? '1' : '0');
+  setText(els.lockText, world.lockTarget
     ? (world.lockProgress >= 1 ? '◉ LOCK — FIRE!' : `LOCKING ${world.lockTarget.name} ${Math.round(world.lockProgress * 100)}%`)
-    : '';
+    : '');
 
   // Overlay canvas: reticle, target boxes, streaks, hit marker.
   // Capped at DPR 1 — it is mostly lines, and a full-screen 2x backing
