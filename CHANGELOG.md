@@ -1,5 +1,13 @@
 # TALON STRIKE — Changelog
 
+## v5.18 — 27 November 2026
+
+### Reverted v5.17
+- The lobby jet spin is gone: sliding left or right on the title
+  screen no longer turns the plane. The title screen is back to
+  its slow orbit, and picking a jet works exactly as in v5.16 —
+  the T-7 / F-35 choice stays.
+
 ## v5.17 — 27 November 2026
 
 ### Spin the jet in the lobby
