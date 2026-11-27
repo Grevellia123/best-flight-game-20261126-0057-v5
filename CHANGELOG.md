@@ -27,11 +27,34 @@
   in-game gain — about 17 dB below the old 50-cal burst — so it sits under
   the engine and music instead of drowning them out.
 
-## v5.0 — 27 November 2026
-- The make.fun bounty entry: T-7 Talon vs the Crimson Wing, 5 waves ending
+## 27 November 2026 — Sound, visuals, and mute
+
+- Bloom and god rays; Vector Locked BGM; real engine, gun, and missile
+  recordings; mute fix.
+- Audio assets added (BGM + engine/gun/missile).
+- Lobby BGM on first tap, audio primed at load; low-end performance — no
+  MSAA below High, capability-based default quality, faster step-down on
+  the title screen.
+- One-tap mute; settings panel with sound and resolution; Doppler on the
+  enemy engine, gun, missile, and flyby.
+- Jet flyby sound added for enemy close passes.
+
+## 27 November 2026 — Phone HUD fixes
+
+- Fixed HUD overlaps in phone landscape (top bar, tapes, THR/FIRE/MSL,
+  radar).
+- Fixed title screen clipping and remaining phone HUD overlaps (dvh tapes,
+  narrow wave banner, smaller bars).
+- Deleted the THR buttons, moved the bars bottom-left, added a fullscreen
+  button.
+- Screenshots re-rendered with the fixed HUD, then again with the bloom
+  version.
+
+## 26 November 2026 — v5.0
+
+- TALON STRIKE v5 lands: 3D air-combat game for the make.fun
+  best-flight-game bounty — T-7 Talon vs the Crimson Wing, 5 waves ending
   in the Crimson Ace duel, guns + lock-on missiles, full HUD + radar,
   chase/cockpit cameras, Low/Medium/High graphics with auto step-down,
-  touch controls, and real jet/gun/missile/flyby recordings with Doppler
-  pitch.
-- Lobby BGM on first tap, audio primed at load, settings panel with
-  sound/resolution, one-tap mute.
+  touch controls.
+- Screenshots added; main.ts header authored (kit check fix).
