@@ -567,20 +567,20 @@ export function createScene(container, qualityName) {
         handle.camLook.lerp(desiredLook, 1 - Math.pow(0.001, dt));
       }
     } else {
-      // v5.9: chase camera closer still (20m → 16m behind, same ~14°
-      // look-down angle) and the jet a little left of centre: the
+      // v5.10: chase camera closer again (16m → 14m behind, same ~14°
+      // look-down angle) and the jet further left of centre: the
       // camera dollies right of the jet's line and the look point
       // moves with it, so the view direction is unchanged and the jet
       // reads left of frame. The dolly is scaled by the camera aspect
-      // so the shift is the same ~6% of frame width on every screen —
-      // a fixed 2m would be a little left at 16:9 but a quarter of
-      // the frame on a portrait phone. 16m puts the ~15m wingspan at
-      // ~44% of frame width at 16:9; the flame tip sits ~11m behind
-      // the jet, so the camera stays ~5m clear of it.
-      const halfW = 16 * Math.tan(31 * Math.PI / 180) * camera.aspect;
-      const dolly = 0.12 * halfW; // 6% of frame width at the jet's depth
+      // so the shift is the same ~12% of frame width on every screen —
+      // a fixed distance would read differently on a wide screen and
+      // a portrait phone. 14m puts the ~15m wingspan at ~50% of frame
+      // width at 16:9; the flame tip sits ~11m behind the jet, so the
+      // camera stays ~3m clear of it.
+      const halfW = 14 * Math.tan(31 * Math.PI / 180) * camera.aspect;
+      const dolly = 0.24 * halfW; // 12% of frame width at the jet's depth
       _right.set(Math.cos(p.yaw), 0, -Math.sin(p.yaw));
-      desiredPos.set(p.x - nose.x * 16 + _right.x * dolly, p.y - nose.y * 16 + 4.0, p.z - nose.z * 16 + _right.z * dolly);
+      desiredPos.set(p.x - nose.x * 14 + _right.x * dolly, p.y - nose.y * 14 + 3.5, p.z - nose.z * 14 + _right.z * dolly);
       desiredLook.set(p.x + nose.x * 80 + _right.x * dolly, p.y + nose.y * 80, p.z + nose.z * 80 + _right.z * dolly);
       if (snap) { handle.camPos.copy(desiredPos); handle.camLook.copy(desiredLook); }
       else {

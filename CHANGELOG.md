@@ -1,5 +1,16 @@
 # TALON STRIKE — Changelog
 
+## v5.10 — 27 November 2026
+
+### Chase camera closer again, jet further left
+- The v5.9 framing (16 m behind, jet a little left) wasn't close or
+  left enough, so it is replaced: the chase camera is now 14 m
+  behind the jet, at the same look-down angle, and the jet sits
+  further left of centre — about 12% of the frame width left of
+  centre on every screen. The jet now spans about half the frame
+  width at 16:9. The cockpit camera and the title-screen orbit are
+  unchanged.
+
 ## v5.9 — 27 November 2026
 
 ### Touch throttle, closer chase camera, pause settings closed
