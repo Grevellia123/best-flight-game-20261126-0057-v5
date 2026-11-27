@@ -138,7 +138,13 @@ function buildJet({ body, accent, canopy, scale = 1 }) {
 // their neighbours across the tile border and shade with a visible seam.
 function buildTerrainTiles(seed) {
   const S = CFG.world.size;
-  const TILES = 5, SEG = 30, TS = S / TILES;
+  // SEG 60: 40 m between terrain vertices (was 80 m at SEG 30). The shoreline
+  // and river banks are drawn by the mesh itself — each waterline segment is
+  // one straight triangle edge — so at 80 m the waterline read as a sawtooth
+  // that shimmered in flight. 40 m halves the tooth size. The extra 135k
+  // triangles are static, vertex-coloured and mostly culled off-screen, so
+  // the fill-rate cost (the real bottleneck on a phone) does not change.
+  const TILES = 5, SEG = 60, TS = S / TILES;
   const mat = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95, metalness: 0 });
   const cGrass = new THREE.Color(0x5f9150), cGrass2 = new THREE.Color(0x7fae5e);
   const cForest = new THREE.Color(0x3f6b3a), cRock = new THREE.Color(0x8a8578);
@@ -159,13 +165,22 @@ function buildTerrainTiles(seed) {
       const h = terrainHeight(x, z);
       pos.setY(i, h);
       const n = fbm2(x * 0.004, z * 0.004, seed + 31) * 0.5 + 0.5;
+      // Sand fades into grass over h 6–14 m (smoothstep) instead of a hard
+      // cut at h = 8: the beach's outer edge was a sharp colour line that
+      // followed the mesh and zigzagged with it, just like the waterline.
+      const sg = clamp((h - 6) / 8, 0, 1), sgs = sg * sg * (3 - 2 * sg);
       if (h < 1) tmp.copy(cSeaFloor).lerp(cSand, clamp((h + 14) / 15, 0, 1));
-      else if (h < 8) tmp.copy(cSand);
-      else if (h < 130) tmp.copy(cGrass).lerp(cGrass2, n);
+      else if (h < 130) tmp.copy(cSand).lerp(cGrass, sgs).lerp(cGrass2, n * sgs);
       else if (h < 210) tmp.copy(cGrass2).lerp(cForest, (h - 130) / 80);
       else tmp.copy(cForest).lerp(cRock, (h - 210) / 70);
-      // River banks stay sandy.
-      if (Math.abs(z - riverZ(x)) < 170 && h < 12) tmp.copy(cSand).lerp(tmp, 0.4);
+      // River banks stay sandy — mixed in smoothly, fading with distance
+      // from the channel (170–230 m) and with height (h 10–16 m), so the
+      // sand stripe has no hard edge to zigzag with the mesh. The old line
+      // set pure sand inside a hard 170 m / h < 12 cutoff, which drew a
+      // sharp tan stripe along the river — one of the vibrating edges.
+      const riverD = Math.abs(z - riverZ(x));
+      const riverFade = clamp(1 - (riverD - 170) / 60, 0, 1) * (1 - clamp((h - 10) / 6, 0, 1));
+      if (riverFade > 0) tmp.lerp(cSand, 0.6 * riverFade);
       colors[i * 3] = tmp.r; colors[i * 3 + 1] = tmp.g; colors[i * 3 + 2] = tmp.b;
       // Heightfield normal: normalize(-dh/dx, 1, -dh/dz).
       const dx = (terrainHeight(x + e, z) - terrainHeight(x - e, z)) / (2 * e);

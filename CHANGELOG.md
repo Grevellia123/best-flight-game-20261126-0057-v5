@@ -1,5 +1,23 @@
 # TALON STRIKE — Changelog
 
+## v5.15 — 27 November 2026
+
+### Smoother river banks and shorelines
+- The river banks still zigzagged after v5.14 — and so did the
+  distant ponds. The v5.14 fix smoothed the terrain heights, but
+  the waterline is drawn by the terrain mesh itself: each stretch
+  of shoreline is one straight triangle edge, 80 m long. The mesh
+  is now twice as fine (40 m between vertices, 45,000 → 180,000
+  triangles), so every waterline segment is half as long and the
+  sawtooth is half the size. The extra triangles are static and
+  mostly off-screen, so the game should run just as fast.
+- The beach edge is soft now: sand fades into grass over 6–14 m
+  of height instead of a hard cut at 8 m, so the tan band has no
+  sharp line to zigzag with the mesh. The river's sandy banks fade
+  out smoothly with distance from the channel and with height,
+  instead of a hard 170 m stripe — that stripe was one of the
+  edges visibly vibrating in flight.
+
 ## v5.14 — 27 November 2026
 
 ### Smaller reticle, smooth coastline, antialiasing setting
