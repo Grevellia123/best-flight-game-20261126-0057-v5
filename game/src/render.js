@@ -24,7 +24,7 @@ function setupCanvas(el, maxDpr = 1.5) {
   }
   const g = el.getContext('2d');
   g.setTransform(dpr, 0, 0, dpr, 0, 0);
-  return { g, w, h };
+  return { g, w, h, dpr };
 }
 
 // Vertical tape: numbers scroll past a fixed centre box. v5.8 minimal:
@@ -83,34 +83,64 @@ function drawTape(el, value, step, unit, label) {
   g.shadowBlur = 0;
 }
 
+// v5.12 perf — offscreen compass strip. The tick marks and heading
+// labels never change, but they were redrawn with ~25 strokes and 8
+// fillText calls every frame. They are now drawn once onto an offscreen
+// canvas holding two copies of the full 360° strip; each frame only
+// blits the visible window (the centre caret and readout still draw
+// per frame — they move with the heading).
+const COMPASS_PX_PER_DEG = 2.2;
+const COMPASS_MARKS = { 0: 'N', 45: '045', 90: 'E', 135: '135', 180: 'S', 225: '225', 270: 'W', 315: '315' };
+let _compassStrip = null, _compassStripKey = '';
+function compassStrip(w, h, dpr) {
+  const key = `${w}x${h}@${dpr}`;
+  if (_compassStrip && _compassStripKey === key) return _compassStrip;
+  const stripW = Math.ceil(360 * COMPASS_PX_PER_DEG) * 2; // two copies for wraparound
+  const c = document.createElement('canvas');
+  c.width = Math.ceil(stripW * dpr); c.height = Math.ceil(h * dpr);
+  const g = c.getContext('2d');
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  g.font = '600 11px ui-monospace, monospace';
+  g.textAlign = 'center';
+  g.shadowColor = 'rgba(0, 0, 0, 0.6)'; g.shadowBlur = 3;
+  for (let hd = 0; hd < 720; hd += 15) {
+    const x = hd * COMPASS_PX_PER_DEG;
+    const major = (hd % 360) % 45 === 0;
+    g.strokeStyle = major ? 'rgba(180,230,255,0.9)' : 'rgba(140,220,255,0.35)';
+    g.beginPath(); g.moveTo(x, major ? 18 : 26); g.lineTo(x, 34); g.stroke();
+    if (major) {
+      const m = COMPASS_MARKS[hd % 360];
+      g.fillStyle = 'rgba(200,235,255,0.95)';
+      g.fillText(m || String(hd % 360).padStart(3, '0'), x, 14);
+    }
+  }
+  _compassStrip = c; _compassStripKey = key;
+  return c;
+}
+
 function drawCompass(el, yaw) {
   const s = setupCanvas(el);
   if (!s) return;
-  const { g, w, h } = s;
+  const { g, w, h, dpr } = s;
   g.clearRect(0, 0, w, h);
   // v5.8 minimal: no panel behind the compass — ticks and numbers float
   // over the sky, with a soft shadow so they stay readable.
   // Heading: 0 = north (-z). yaw 0 faces north.
   let deg = ((-yaw * 180) / Math.PI) % 360;
   if (deg < 0) deg += 360;
-  const pxPerDeg = 2.2;
   const cx = w / 2;
-  g.font = '600 11px ui-monospace, monospace';
-  g.textAlign = 'center';
-  g.shadowColor = 'rgba(0, 0, 0, 0.6)'; g.shadowBlur = 3;
-  const marks = [[0, 'N'], [45, '045'], [90, 'E'], [135, '135'], [180, 'S'], [225, '225'], [270, 'W'], [315, '315']];
-  for (let d = -180; d <= 180; d += 15) {
-    let hd = (deg + d + 360) % 360;
-    const x = cx + d * pxPerDeg;
-    if (x < -20 || x > w + 20) continue;
-    const major = hd % 45 === 0;
-    g.strokeStyle = major ? 'rgba(180,230,255,0.9)' : 'rgba(140,220,255,0.35)';
-    g.beginPath(); g.moveTo(x, major ? 18 : 26); g.lineTo(x, 34); g.stroke();
-    if (major) {
-      const m = marks.find(([mv]) => mv === hd);
-      g.fillStyle = 'rgba(200,235,255,0.95)';
-      g.fillText(m ? m[1] : String(hd).padStart(3, '0'), x, 14);
-    }
+  const strip = compassStrip(w, h, dpr);
+  const stripW = 360 * COMPASS_PX_PER_DEG;
+  // Window left edge in strip coordinates: heading deg sits at cx.
+  let off = (deg * COMPASS_PX_PER_DEG - cx) % stripW;
+  if (off < 0) off += stripW;
+  // Blit in up to two parts so the window can wrap past the strip end.
+  const sw = strip.width / dpr; // strip width in CSS px (two copies)
+  let sx = off, dx = 0, remain = w;
+  while (remain > 0 && sx < sw) {
+    const take = Math.min(remain, sw - sx);
+    g.drawImage(strip, sx * dpr, 0, take * dpr, h * dpr, dx, 0, take, h);
+    remain -= take; dx += take; sx = 0;
   }
   // Centre caret + readout.
   g.shadowBlur = 0;
@@ -182,6 +212,10 @@ function drawRadar(el, world) {
   g.beginPath(); g.moveTo(cx, cy - 7); g.lineTo(cx - 5, cy + 5); g.lineTo(cx + 5, cy + 5); g.closePath(); g.fill();
 }
 
+// v5.12: reticle tick directions, hoisted — the old code built a fresh
+// array of four arrays every frame.
+const RETICLE_DIRS = [[0, -1], [0, 1], [-1, 0], [1, 0]];
+
 export function drawHud(els, world, opts) {
   const p = world.player;
   const speedKt = Math.round(p.speed * 1.944);
@@ -240,26 +274,26 @@ export function drawHud(els, world, opts) {
         g.stroke();
       }
     }
-    // Reticle.
+    // Reticle — v5.12: smaller (the old 20px ring read too big).
     const locked = world.lockTarget && world.lockProgress >= 1;
     g.strokeStyle = locked ? '#ff4030' : 'rgba(140, 230, 255, 0.9)';
-    g.lineWidth = locked ? 2.5 : 1.8;
-    const rr = locked ? 26 : 20;
+    g.lineWidth = locked ? 2 : 1.5;
+    const rr = locked ? 16 : 12;
     g.beginPath(); g.arc(cx, cy, rr, 0, Math.PI * 2); g.stroke();
     g.beginPath();
-    for (const [dx, dy] of [[0, -1], [0, 1], [-1, 0], [1, 0]]) {
-      g.moveTo(cx + dx * (rr + 4), cy + dy * (rr + 4));
-      g.lineTo(cx + dx * (rr + 12), cy + dy * (rr + 12));
+    for (const [dx, dy] of RETICLE_DIRS) {
+      g.moveTo(cx + dx * (rr + 3), cy + dy * (rr + 3));
+      g.lineTo(cx + dx * (rr + 9), cy + dy * (rr + 9));
     }
     g.stroke();
     g.fillStyle = locked ? '#ff4030' : 'rgba(140, 230, 255, 0.9)';
-    g.beginPath(); g.arc(cx, cy, 2.2, 0, Math.PI * 2); g.fill();
+    g.beginPath(); g.arc(cx, cy, 1.6, 0, Math.PI * 2); g.fill();
     // Lock progress arc.
     if (world.lockTarget && world.lockProgress > 0 && world.lockProgress < 1) {
       g.strokeStyle = '#ffc020';
-      g.lineWidth = 3;
+      g.lineWidth = 2.5;
       g.beginPath();
-      g.arc(cx, cy, rr + 8, -Math.PI / 2, -Math.PI / 2 + world.lockProgress * Math.PI * 2);
+      g.arc(cx, cy, rr + 6, -Math.PI / 2, -Math.PI / 2 + world.lockProgress * Math.PI * 2);
       g.stroke();
     }
     // Target boxes.
@@ -286,8 +320,8 @@ export function drawHud(els, world, opts) {
     // Hit marker flash.
     if (opts.hitFlash > 0) {
       g.strokeStyle = `rgba(255, 255, 255, ${Math.min(1, opts.hitFlash * 3)})`;
-      g.lineWidth = 2.5;
-      const m = 10;
+      g.lineWidth = 2;
+      const m = 7;
       g.beginPath();
       g.moveTo(cx - m, cy - m); g.lineTo(cx - m * 0.4, cy - m * 0.4);
       g.moveTo(cx + m, cy - m); g.lineTo(cx + m * 0.4, cy - m * 0.4);

@@ -1,5 +1,46 @@
 # TALON STRIKE — Changelog
 
+## v5.12 — 27 November 2026
+
+### Performance pass (try it — revert if it's bad) + smaller reticle
+- Object pooling and zero loop allocation: bullets, missiles and
+  enemies are now reused from free lists instead of being created
+  and thrown away every shot and wave; the sim reuses scratch
+  vectors instead of allocating a fresh {x, y, z} on every nose,
+  missile-steering and enemy step; the per-frame enemies.filter()
+  array is replaced by in-place compaction; missile trails use a
+  ring buffer instead of push/shift arrays; the HUD project()
+  result, the drawHud options, the tracer colours and the reticle
+  tick directions are all hoisted out of the loop.
+- Shared jet geometry (the InstancedMesh / .dispose() fix): every
+  jet used to build its own geometries, materials and glow texture,
+  and enemy jets were removed from the scene without .dispose() —
+  each wave leaked ~15 GPU buffers per bandit. All jets now share
+  one set of geometries, materials are cached per colour set, and
+  the glow texture is built once, so spawning a bandit allocates no
+  GPU state and removing one needs no dispose. True InstancedMesh
+  was skipped: each jet's flame scales and glow opacity are per-jet
+  and the glow is a Sprite — instancing would need a custom shader
+  for no measurable gain at ~6 jets. Rings pulse opacity per ring
+  and clouds are Sprites, so neither can instance either.
+- Canvas 2D offscreen cache: the compass ticks and heading labels
+  are drawn once onto an offscreen strip and blitted each frame
+  instead of ~25 strokes and 8 fillText calls per frame.
+- Already in the game, so not changed here: pixel-ratio caps per
+  quality preset (Low 0.75 / Medium 1.0 / High 2.0) applied
+  immediately by the quality menu with no reload and no progress
+  reset; frame time clamped at 0.05 s; no shadow maps exist to
+  disable (the game runs on two lights); the spatial grid was
+  skipped — at most ~6 enemies and ~20 bullets, the linear
+  distance-squared checks are already cheaper than maintaining a
+  grid.
+- The aim reticle (cursor) is smaller: ring 20 → 12 px (16 px when
+  locked), shorter ticks, smaller centre dot and lock arc; the hit
+  marker shrank with it.
+- Gameplay is unchanged: same flight model, same waves, same
+  scoring. If this build feels worse in any way, say so and it
+  will be reverted.
+
 ## v5.11 — 27 November 2026
 
 ### THR buttons deleted, jet a little lower

@@ -541,6 +541,14 @@ function addKillFeed(text) {
 }
 
 // ---- main loop -----------------------------------------------------------------
+// v5.12 perf: the drawHud options object (with its project closure) was
+// rebuilt every frame. It is built once here; only hitFlash (per frame)
+// and streaks (per quality change) are updated below.
+const hudOpts = {
+  project: (x, y, z) => scene.project(x, y, z),
+  streaks: CFG.quality[settings.quality].streaks,
+  hitFlash: 0,
+};
 let last = performance.now();
 let titleAngle = 0;
 // ?timescale=N (verification only): run N world substeps per rendered frame so
@@ -603,11 +611,9 @@ function frame(now) {
   drainEvents();
   scene.sync(world, dt, settings.camMode, world.time);
   if (world.screen === 'play' || SHOT === 'combat' || SHOT === 'lock') {
-    drawHud(els, world, {
-      project: (x, y, z) => scene.project(x, y, z),
-      streaks: CFG.quality[settings.quality].streaks,
-      hitFlash,
-    });
+    hudOpts.hitFlash = hitFlash;
+    hudOpts.streaks = CFG.quality[settings.quality].streaks;
+    drawHud(els, world, hudOpts);
   }
 }
 
